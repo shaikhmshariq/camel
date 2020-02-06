@@ -261,7 +261,6 @@ public class EndpointSchemaGeneratorMojo extends AbstractGeneratorMojo {
                     .filter(option -> !endpointOptionNames.contains(option.getName()))
                     .forEach(option -> componentModel.getEndpointOptions().add(option));
         }
-
     }
 
     private void fixDoc(BaseOptionModel option, List<? extends BaseOptionModel> parentOptions) {
@@ -732,6 +731,7 @@ public class EndpointSchemaGeneratorMojo extends AbstractGeneratorMojo {
                     if ("".equals(defaultValue) && metadata != null) {
                         defaultValue = metadata.defaultValue();
                     }
+                    String defaultValueNote = path.defaultValueNote();
                     boolean required = metadata != null && metadata.required();
                     String label = path.label();
                     if (Strings.isNullOrEmpty(label) && metadata != null) {
@@ -788,7 +788,7 @@ public class EndpointSchemaGeneratorMojo extends AbstractGeneratorMojo {
                     option.setJavaType(fieldTypeName);
                     option.setRequired(required);
                     option.setDefaultValue(defaultValue);
-//                    option.setDefaultValueNote(defaultValueNote);
+                    option.setDefaultValueNote(defaultValueNote);
                     option.setDescription(docComment.trim());
                     option.setDeprecated(deprecated);
                     option.setDeprecationNote(deprecationNote);
@@ -1260,6 +1260,8 @@ public class EndpointSchemaGeneratorMojo extends AbstractGeneratorMojo {
                 sourceRoots = project.getCompileSourceRoots().stream()
                         .map(Paths::get)
                         .collect(Collectors.toList());
+                // we can only find camel root folder if its the apache camel project itself
+                // 3rd party projects then this will be null
                 File camelRootFile = PackageHelper.findCamelCoreDirectory(project.getBasedir());
                 final Path camelRoot = camelRootFile != null ? camelRootFile.toPath().getParent().getParent() : project.getBasedir().toPath();
                 project.getCompileClasspathElements().stream()
