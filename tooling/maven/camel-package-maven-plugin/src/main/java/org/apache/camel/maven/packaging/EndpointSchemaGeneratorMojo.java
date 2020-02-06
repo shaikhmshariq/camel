@@ -276,12 +276,10 @@ public class EndpointSchemaGeneratorMojo extends AbstractGeneratorMojo {
         doc = JavadocHelper.sanitizeDescription(doc, false);
         option.setDescription(doc);
 
-        /*
-
         if (isNullOrEmpty(doc)) {
             throw new IllegalStateException("Empty doc for option: " + option.getName() + ", parent options: "
                     + (parentOptions != null ? Jsoner.serialize(JsonMapper.asJsonObject(parentOptions)) : "<null>"));
-        }*/
+        }
     }
 
     private boolean filterOutOption(ComponentModel component, BaseOptionModel option) {
