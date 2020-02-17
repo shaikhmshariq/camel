@@ -27,19 +27,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.camel.AfterPropertiesConfigured;
 import org.apache.camel.CamelContext;
 import org.apache.camel.CamelContextAware;
 import org.apache.camel.Component;
 import org.apache.camel.Endpoint;
 import org.apache.camel.ExtendedCamelContext;
-import org.apache.camel.NoFactoryAvailableException;
 import org.apache.camel.ResolveEndpointFailedException;
 import org.apache.camel.component.extension.ComponentExtension;
-import org.apache.camel.spi.GeneratedPropertyConfigurer;
 import org.apache.camel.spi.Metadata;
 import org.apache.camel.spi.PropertyConfigurer;
 import org.apache.camel.spi.PropertyConfigurerAware;
-import org.apache.camel.spi.Registry;
 import org.apache.camel.support.service.ServiceSupport;
 import org.apache.camel.util.ObjectHelper;
 import org.apache.camel.util.PropertiesHelper;
@@ -64,8 +62,8 @@ public abstract class DefaultComponent extends ServiceSupport implements Compone
 
     private static final String RESOURCE_PATH = "META-INF/services/org/apache/camel/configurer/";
 
-    private volatile GeneratedPropertyConfigurer componentPropertyConfigurer;
-    private volatile GeneratedPropertyConfigurer endpointPropertyConfigurer;
+    private volatile PropertyConfigurer componentPropertyConfigurer;
+    private volatile PropertyConfigurer endpointPropertyConfigurer;
     private final List<Supplier<ComponentExtension>> extensions = new ArrayList<>();
     private CamelContext camelContext;
 
@@ -263,6 +261,11 @@ public abstract class DefaultComponent extends ServiceSupport implements Compone
             validateParameters(uri, parameters, null);
         }
 
+        // allow custom configuration after properties has been configured
+        if (endpoint instanceof AfterPropertiesConfigured) {
+            ((AfterPropertiesConfigured) endpoint).afterPropertiesConfigured(getCamelContext());
+        }
+
         afterConfiguration(uri, path, endpoint, parameters);
         return endpoint;
     }
@@ -404,40 +407,10 @@ public abstract class DefaultComponent extends ServiceSupport implements Compone
             if (name.contains(",")) {
                 name = StringHelper.before(name, ",");
             }
-            try {
-                final Registry registry = getCamelContext().getRegistry();
-                LOG.trace("Discovering optional component property configurer class for component: {}", name);
-                final String componentConfigurerName = name + "-component-configurer";
-                componentPropertyConfigurer = registry.lookupByNameAndType(componentConfigurerName, GeneratedPropertyConfigurer.class);
-                if (LOG.isDebugEnabled() && componentPropertyConfigurer != null) {
-                    LOG.debug("Discovered component property configurer using the Camel registry: {} -> {}", componentConfigurerName, componentPropertyConfigurer);
-                }
-                if (componentPropertyConfigurer == null) {
-                    final Optional<Class<?>> clazz = getCamelContext().adapt(ExtendedCamelContext.class).getFactoryFinder(RESOURCE_PATH)
-                            .findOptionalClass(name + "-component", null);
-                    clazz.ifPresent(c -> componentPropertyConfigurer = org.apache.camel.support.ObjectHelper.newInstance(c, GeneratedPropertyConfigurer.class));
-                    if (LOG.isDebugEnabled() && componentPropertyConfigurer != null) {
-                        LOG.debug("Discovered component property configurer using the FactoryFinder: {} -> {}", name, componentPropertyConfigurer);
-                    }
-                }
-
-                LOG.trace("Discovering optional endpoint property configurer class for component: {}", name);
-                final String endpointConfigurerName = name + "-endpoint-configurer";
-                endpointPropertyConfigurer = registry.lookupByNameAndType(endpointConfigurerName, GeneratedPropertyConfigurer.class);
-                if (LOG.isDebugEnabled() && endpointPropertyConfigurer != null) {
-                    LOG.debug("Discovered endpoint property configurer using the Camel registry: {} -> {}", endpointConfigurerName, endpointPropertyConfigurer);
-                }
-                if (endpointPropertyConfigurer == null) {
-                    final Optional<Class<?>> clazz = getCamelContext().adapt(ExtendedCamelContext.class).getFactoryFinder(RESOURCE_PATH)
-                            .findOptionalClass(name + "-endpoint", null);
-                    clazz.ifPresent(c -> endpointPropertyConfigurer = org.apache.camel.support.ObjectHelper.newInstance(c, GeneratedPropertyConfigurer.class));
-                    if (LOG.isDebugEnabled() && endpointPropertyConfigurer != null) {
-                        LOG.debug("Discovered endpoint property configurer using the FactoryFinder: {} -> {}", name, endpointPropertyConfigurer);
-                    }
-                }
-            } catch (NoFactoryAvailableException e) {
-                // ignore
-            }
+            final String componentConfigurerName = name + "-component-configurer";
+            componentPropertyConfigurer = getCamelContext().adapt(ExtendedCamelContext.class).getConfigurerResolver().resolvePropertyConfigurer(componentConfigurerName, getCamelContext());
+            final String endpointConfigurerName = name + "-endpoint-configurer";
+            endpointPropertyConfigurer = getCamelContext().adapt(ExtendedCamelContext.class).getConfigurerResolver().resolvePropertyConfigurer(endpointConfigurerName, getCamelContext());
         }
     }
 
@@ -472,7 +445,7 @@ public abstract class DefaultComponent extends ServiceSupport implements Compone
      * in the {@link #createEndpoint(String, String, Map)} method's implementation.
      *
      * This method will call the {@link Endpoint#configureProperties(Map)} method which
-     * should delegate the the endpoint's {@link GeneratedPropertyConfigurer} instance.
+     * should delegate the the endpoint's {@link PropertyConfigurer} instance.
      * In some rare cases, you need to override this method to explicitely set parameters
      * in case a simple generated configurer can not be used.
      *

@@ -7,7 +7,7 @@
 
 == Overview
 
-* https://github.com/apache/camel/blob/master/README.md[Introduction]
+* xref:faq/what-is-camel.adoc[Introduction]
 * xref:getting-started.adoc[Getting Started]
 * xref:book-getting-started.adoc[Longer Getting Started Guide]
 * xref:faq.adoc[FAQ]
@@ -217,7 +217,6 @@ camel routes without them knowing
 ** xref:components::ehcache-component.adoc[Ehcache]
 ** xref:components::elasticsearch-rest-component.adoc[Elastichsearch Rest]
 ** xref:components::elsql-component.adoc[ElSQL]
-** xref:components::etcd-component.adoc[etcd]
 ** xref:components::exec-component.adoc[Exec]
 ** xref:components::facebook-component.adoc[Facebook]
 ** xref:components::fhir-component.adoc[FHIR]
@@ -397,7 +396,6 @@ camel routes without them knowing
 ** xref:components::web3j-component.adoc[Web3j Ethereum Blockchain]
 ** xref:components::wordpress-component.adoc[Wordpress]
 ** xref:components::xchange-component.adoc[XChange]
-** xref:components::xmlsecurity-component.adoc[XML Security]
 ** xref:components::xmpp-component.adoc[XMPP]
 ** xref:components::xj-component.adoc[XJ]
 ** xref:components::xquery-component.adoc[XQuery]

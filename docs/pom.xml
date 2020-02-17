@@ -31,6 +31,15 @@
     <packaging>pom</packaging>
     <modelVersion>4.0.0</modelVersion>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-allcomponents</artifactId>
+            <type>pom</type>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>
@@ -80,21 +89,30 @@
                             <commandlineArgs>${project.basedir}/node/yarn/dist/bin/yarn.js --non-interactive gulp</commandlineArgs>
                         </configuration>
                     </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.camel</groupId>
+                <artifactId>camel-package-maven-plugin</artifactId>
+                <executions>
                     <execution>
-                        <id>antora-xref-check</id>
+                        <id>xref-check</id>
                         <goals>
-                            <goal>exec</goal>
+                            <goal>xref-check</goal>
                         </goals>
                         <phase>verify</phase>
-                        <configuration>
-                            <executable>${project.basedir}/node/node</executable>
-                            <commandlineArgs>${project.basedir}/node/yarn/dist/bin/yarn.js --non-interactive antora --generator @antora/xref-validator site.yml</commandlineArgs>
-                            <skip>${fastinstall}</skip>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
         </plugins>
     </build>
+
+    <!-- camel-jira -->
+    <repositories>
+        <repository>
+            <id>atlassian-public</id>
+            <url>https://packages.atlassian.com/maven-external</url>
+        </repository>
+    </repositories>
 
 </project>

@@ -99,8 +99,6 @@ with the following path and query parameters:
 | *secretKey* (security) | Amazon AWS Secret Key |  | String
 |===
 // endpoint options: END
-// spring-boot-auto-configure options: START
-// spring-boot-auto-configure options: END
 
 Required CW component options
 
@@ -170,3 +168,5 @@ Maven users will need to add the following dependency to their pom.xml.
 ---------------------------------------
 
 where `${camel-version`} must be replaced by the actual version of Camel.
+
+include::camel-spring-boot::page$aws2-cw-starter.adoc[]

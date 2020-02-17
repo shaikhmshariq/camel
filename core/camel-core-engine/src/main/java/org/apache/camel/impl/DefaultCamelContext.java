@@ -16,8 +16,9 @@
  */
 package org.apache.camel.impl;
 
-import javax.naming.Context;
 import java.util.Map;
+
+import javax.naming.Context;
 
 import org.apache.camel.CamelContext;
 import org.apache.camel.Endpoint;
@@ -33,6 +34,7 @@ import org.apache.camel.impl.engine.DefaultCamelBeanPostProcessor;
 import org.apache.camel.impl.engine.DefaultCamelContextNameStrategy;
 import org.apache.camel.impl.engine.DefaultClassResolver;
 import org.apache.camel.impl.engine.DefaultComponentResolver;
+import org.apache.camel.impl.engine.DefaultConfigurerResolver;
 import org.apache.camel.impl.engine.DefaultDataFormatResolver;
 import org.apache.camel.impl.engine.DefaultEndpointRegistry;
 import org.apache.camel.impl.engine.DefaultFactoryFinderResolver;
@@ -68,6 +70,7 @@ import org.apache.camel.spi.CamelBeanPostProcessor;
 import org.apache.camel.spi.CamelContextNameStrategy;
 import org.apache.camel.spi.ClassResolver;
 import org.apache.camel.spi.ComponentResolver;
+import org.apache.camel.spi.ConfigurerResolver;
 import org.apache.camel.spi.DataFormatResolver;
 import org.apache.camel.spi.EndpointRegistry;
 import org.apache.camel.spi.ExecutorServiceManager;
@@ -166,6 +169,14 @@ public class DefaultCamelContext extends AbstractModelCamelContext {
     }
 
     @Override
+    protected void disallowAddingNewRoutes() {
+        // we no longer need reifiers so clear its map (danger)
+        if (getReifierStrategy() != null) {
+            getReifierStrategy().clearReifiers();
+        }
+    }
+
+    @Override
     protected TypeConverter createTypeConverter() {
         return new DefaultTypeConverter(this, getPackageScanClassResolver(), getInjector(), getDefaultFactoryFinder(), isLoadTypeConverters());
     }
@@ -173,6 +184,10 @@ public class DefaultCamelContext extends AbstractModelCamelContext {
     @Override
     protected TypeConverterRegistry createTypeConverterRegistry() {
         TypeConverter typeConverter = getTypeConverter();
+        // type converter is also registry so create type converter
+        if (typeConverter == null) {
+            typeConverter = createTypeConverter();
+        }
         if (typeConverter instanceof TypeConverterRegistry) {
             return (TypeConverterRegistry)typeConverter;
         }
@@ -369,6 +384,11 @@ public class DefaultCamelContext extends AbstractModelCamelContext {
     }
 
     @Override
+    protected ConfigurerResolver createConfigurerResolver() {
+        return new DefaultConfigurerResolver();
+    }
+
+    @Override
     protected RestRegistryFactory createRestRegistryFactory() {
         return new RestRegistryFactoryResolver().resolve(this);
     }
@@ -387,6 +407,5 @@ public class DefaultCamelContext extends AbstractModelCamelContext {
     protected ReactiveExecutor createReactiveExecutor() {
         return new ReactiveExecutorResolver().resolve(this);
     }
-
 
 }

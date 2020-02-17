@@ -32,6 +32,29 @@ The option `cache` has been deprecated in favour of the new `scope` option that 
 Setting this to Prototype will let Camel create/lookup a new bean instance, per use; which acts as prototype scoped. However beware that if you lookup the bean, then the registry that holds the bean, would return a bean accordingly to its configuration, which can be singleton or prototype scoped. For example if you use Spring, or CDI, which has their own settings for setting bean scopes.
 ====
 
+=== camel-etcd
+
+The `camel-etcd` component has changed its endpoint syntax from `etcd:action/path` to
+`etcd-keys:path`, `etcd-stats:path`, or `etcd-watch:path`.
+
+For example before
+
+[source,text]
+----
+etcd:stats/leader
+----
+
+Should be changed to
+----
+etcd-stats:leader
+----
+
+This change was needed as the 3 actions could not share the same component/endpoint and had to be separated.
+
+=== camel-ftp
+
+ The stepwise functionality (stepwise=true) is not supported for stream download (treamDownload=true).
+
 === camel-irc
 
 The `camel-irc` component has changed its endpoint syntax and removed option #room as a part of the url path. Allowed syntax is:
@@ -115,6 +138,25 @@ Should be changed to
 ipfs:add
 ----
 
+=== camel-xmlsecurity
+
+The `camel-xmlsecurity` component has changed its endpoint syntax from `xmlsecurity:command/name` to
+`xmlsecurity-sign:name`, `xmlsecurity-verify:name`.
+
+For example before
+
+[source,text]
+----
+xmlsecurity:verify/foo
+----
+
+Should be changed to
+----
+xmlsecurity-verify:foo
+----
+
+This change was needed as the 2 commands could not share the same component/endpoint and had to be separated.
+
 === spi-annotations
 
 The `spi-annotations` JAR is mandatory but was mistakenly defined as optional scope. The content of this JAR
@@ -142,6 +184,32 @@ There are a number of components that uses JAXB such as `camel-spring`, `camel-b
 of using XML for beans and Camel XML routes. And a few components such as `camel-soap` etc.
 
 But at general then Camel is now lighter in classpath dependency by not requiring to have JAXB present.
+
+=== Package scanning @TypeConverter
+
+Camel has now been configured to not package scan for custom `@Converter` classes on startup.
+Type converters are now loaded and registered in faster way via source code generated loader classes
+by having `@Converter(loader = true)` specified. If you have custom converters and have not migrated to use
+source code generated loaders, you can enable package scanning by setting
+
+[source,java]
+----
+camelContext.setLoadTypeConverters(true);
+----
+
+And in XML:
+[source,xml]
+----
+<camelContext loadTypeConverters="true">
+...
+</camelContext>
+----
+
+And in Spring Boot `application.properties`:
+[source,properties]
+----
+camel.loadTypeConverters=true
+----
 
 === Graceful Shutdown Timeout
 
@@ -195,6 +263,64 @@ To continue using JMX with Camel Spring Boot add the following dependency:
   <groupId>org.apache.camel</groupId>
   <artifactId>camel-management</artifactId>
 </dependency>
+----
+
+=== Custom components
+
+Camel now uses Camel Package Maven Plugin instead of `camel-apt` APT compiler to generate component meta data.
+
+Custom components should then change in the pom.xml from:
+
+[source,xml]
+----
+<dependency>
+  <groupId>org.apache.camel</groupId>
+  <artifactId>apt</artifactId>
+  <scope>provided</scope>
+</dependency>
+----
+
+To the following:
+
+[source,xml]
+----
+      <plugin>
+        <groupId>org.apache.camel</groupId>
+        <artifactId>camel-package-maven-plugin</artifactId>
+        <version>${camel-version}</version>
+        <executions>
+          <execution>
+            <id>generate</id>
+            <goals>
+              <goal>generate-component</goal>
+            </goals>
+            <phase>process-classes</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>initialize</phase>
+            <goals>
+              <goal>add-source</goal>
+              <goal>add-resource</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>src/generated/java</source>
+              </sources>
+              <resources>
+                <resource>
+                  <directory>src/generated/resources</directory>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
 ----
 
 === API changes
@@ -329,8 +455,56 @@ Some unused methods have been removed from `CamelContext` which were not part of
 * getPollingConsumerServicePool
 * setPollingConsumerServicePool
 
+==== Internal API changes
+
+Remove the method `getProcessors` from `Pipeline` as you should use the `next` method instead to access a read-only view of the processors.
+
 ==== @Experimental
 
 The `@Experimental` annotation is moved from `meta-annotations` JAR to `camel-api`
 and moved from package `org.apache.camel.meta` to `org.apache.camel`.
 And the meta-annotations has been removed.
+
+==== Property Placeholders
+
+The support for out-of-band property placeholders has been removed.
+This means that XML that were using the `http://camel.apache.org/schema/placeholder`
+namespace and that the java builders using the `.placeholder(key, value).` have to
+be modified.
+
+[source,java]
+----
+    from("direct:start")
+        .multicast()
+        .placeholder("stopOnException", "stop")
+        .to("mock:a")
+----
+should be rewritten as:
+[source,java]
+----
+    from("direct:start")
+        .multicast()
+        .stopOnException("{{stop}}")
+        .to("mock:a")
+----
+
+and
+[source,xml]
+----
+   <route>
+        <from uri="direct:start"/>
+        <multicast prop:stopOnException="stop">
+            <to uri="mock:a"/>
+        </multicast>
+    </route>
+ ----
+should be rewritten as:
+[source,xml]
+----
+   <route>
+        <from uri="direct:start"/>
+        <multicast stopOnException="{{stop}}">
+            <to uri="mock:a"/>
+        </multicast>
+    </route>
+ ----

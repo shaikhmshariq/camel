@@ -30,6 +30,8 @@ import org.apache.camel.spi.BeanIntrospection;
 import org.apache.camel.spi.BeanProcessorFactory;
 import org.apache.camel.spi.BeanProxyFactory;
 import org.apache.camel.spi.CamelBeanPostProcessor;
+import org.apache.camel.spi.ComponentResolver;
+import org.apache.camel.spi.ConfigurerResolver;
 import org.apache.camel.spi.DataFormatResolver;
 import org.apache.camel.spi.DeferServiceFactory;
 import org.apache.camel.spi.EndpointStrategy;
@@ -37,6 +39,7 @@ import org.apache.camel.spi.FactoryFinder;
 import org.apache.camel.spi.FactoryFinderResolver;
 import org.apache.camel.spi.HeadersMapFactory;
 import org.apache.camel.spi.InterceptStrategy;
+import org.apache.camel.spi.LanguageResolver;
 import org.apache.camel.spi.LifecycleStrategy;
 import org.apache.camel.spi.LogListener;
 import org.apache.camel.spi.ManagementMBeanAssembler;
@@ -48,6 +51,7 @@ import org.apache.camel.spi.PackageScanResourceResolver;
 import org.apache.camel.spi.ProcessorFactory;
 import org.apache.camel.spi.ReactiveExecutor;
 import org.apache.camel.spi.Registry;
+import org.apache.camel.spi.ReifierStrategy;
 import org.apache.camel.spi.RouteStartupOrder;
 import org.apache.camel.spi.UnitOfWorkFactory;
 import org.apache.camel.spi.XMLRoutesDefinitionLoader;
@@ -172,6 +176,26 @@ public interface ExtendedCamelContext extends CamelContext {
      * @return the node id factory
      */
     NodeIdFactory getNodeIdFactory();
+
+    /**
+     * Gets the {@link ComponentResolver} to use.
+     */
+    ComponentResolver getComponentResolver();
+
+    /**
+     * Sets a custom {@link ComponentResolver} to use.
+     */
+    void setComponentResolver(ComponentResolver componentResolver);
+
+    /**
+     * Gets the {@link LanguageResolver} to use.
+     */
+    LanguageResolver getLanguageResolver();
+
+    /**
+     * Sets a custom {@link LanguageResolver} to use.
+     */
+    void setLanguageResolver(LanguageResolver languageResolver);
 
     /**
      * Gets the current data format resolver
@@ -424,5 +448,45 @@ public interface ExtendedCamelContext extends CamelContext {
      * Sets the {@link RuntimeCamelCatalog} to use.
      */
     void setRuntimeCamelCatalog(RuntimeCamelCatalog runtimeCamelCatalog);
+
+    /**
+     * Gets the {@link ConfigurerResolver} to use.
+     */
+    ConfigurerResolver getConfigurerResolver();
+
+    /**
+     * Sets the {@link ConfigurerResolver} to use.
+     */
+    void setConfigurerResolver(ConfigurerResolver configurerResolver);
+
+    /**
+     * Whether its allowed to add new routes after Camel has been started.
+     * This is enabled by default.
+     * Setting this to false allows Camel to do some internal optimizations to reduce memory footprint.
+     * <p/>
+     * This should only be done on a JVM with a single Camel application (microservice like camel-main, camel-quarkus, camel-spring-boot).
+     * As this affects the entire JVM where Camel JARs are on the classpath.
+     */
+    void setAllowAddingNewRoutes(boolean allowAddingNewRoutes);
+
+    /**
+     * Whether its allowed to add new routes after Camel has been started.
+     * This is enabled by default.
+     * Setting this to false allows Camel to do some internal optimizations to reduce memory footprint.
+     * <p/>
+     * This should only be done on a JVM with a single Camel application (microservice like camel-main, camel-quarkus, camel-spring-boot).
+     * As this affects the entire JVM where Camel JARs are on the classpath.
+     */
+    boolean isAllowAddingNewRoutes();
+
+    /**
+     * Sets the {@link ReifierStrategy} to use.
+     */
+    void setReifierStrategy(ReifierStrategy refierStrategy);
+
+    /**
+     * Gets the {@link ReifierStrategy} to use.
+     */
+    ReifierStrategy getReifierStrategy();
 
 }

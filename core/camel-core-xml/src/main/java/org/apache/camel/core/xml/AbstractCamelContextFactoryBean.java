@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -484,7 +485,7 @@ public abstract class AbstractCamelContextFactoryBean<T extends ModelCamelContex
         if (getTransformers() != null) {
             for (TransformerDefinition def : getTransformers().getTransformers()) {
                 // create and register transformers on transformer registry
-                Transformer transformer = TransformerReifier.reifier(def).createTransformer(getContext());
+                Transformer transformer = TransformerReifier.reifier(getContext(), def).createTransformer();
                 getContext().getTransformerRegistry().put(createTransformerKey(def), transformer);
             }
         }
@@ -498,7 +499,7 @@ public abstract class AbstractCamelContextFactoryBean<T extends ModelCamelContex
         if (getValidators() != null) {
             for (ValidatorDefinition def : getValidators().getValidators()) {
                 // create and register validators on validator registry
-                Validator validator = ValidatorReifier.reifier(def).createValidator(getContext());
+                Validator validator = ValidatorReifier.reifier(getContext(), def).createValidator();
                 getContext().getValidatorRegistry().put(createValidatorKey(def), validator);
             }
         }
@@ -1021,7 +1022,8 @@ public abstract class AbstractCamelContextFactoryBean<T extends ModelCamelContex
         // use custom profiles defined in the CamelContext
         if (getThreadPoolProfiles() != null && !getThreadPoolProfiles().isEmpty()) {
             for (ThreadPoolProfileDefinition definition : getThreadPoolProfiles()) {
-                if (definition.isDefaultProfile()) {
+                Boolean defaultProfile = CamelContextHelper.parseBoolean(getContext(), definition.getDefaultProfile());
+                if (defaultProfile != null && defaultProfile) {
                     LOG.info("Using custom default ThreadPoolProfile with id: {} and implementation: {}", definition.getId(), definition);
                     context.getExecutorServiceManager().setDefaultThreadPoolProfile(asThreadPoolProfile(context, definition));
                     defaultIds.add(definition.getId());
@@ -1047,14 +1049,14 @@ public abstract class AbstractCamelContextFactoryBean<T extends ModelCamelContex
     private ThreadPoolProfile asThreadPoolProfile(CamelContext context, ThreadPoolProfileDefinition definition) throws Exception {
         ThreadPoolProfile answer = new ThreadPoolProfile();
         answer.setId(definition.getId());
-        answer.setDefaultProfile(definition.getDefaultProfile());
+        answer.setDefaultProfile(CamelContextHelper.parseBoolean(context, definition.getDefaultProfile()));
         answer.setPoolSize(CamelContextHelper.parseInteger(context, definition.getPoolSize()));
         answer.setMaxPoolSize(CamelContextHelper.parseInteger(context, definition.getMaxPoolSize()));
         answer.setKeepAliveTime(CamelContextHelper.parseLong(context, definition.getKeepAliveTime()));
         answer.setMaxQueueSize(CamelContextHelper.parseInteger(context, definition.getMaxQueueSize()));
         answer.setAllowCoreThreadTimeOut(CamelContextHelper.parseBoolean(context, definition.getAllowCoreThreadTimeOut()));
         answer.setRejectedPolicy(CamelContextHelper.parse(context, ThreadPoolRejectedPolicy.class, definition.getRejectedPolicy()));
-        answer.setTimeUnit(definition.getTimeUnit());
+        answer.setTimeUnit(CamelContextHelper.parse(context, TimeUnit.class, definition.getTimeUnit()));
         return answer;
     }
 

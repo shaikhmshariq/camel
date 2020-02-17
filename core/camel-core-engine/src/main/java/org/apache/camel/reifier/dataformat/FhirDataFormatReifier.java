@@ -18,13 +18,14 @@ package org.apache.camel.reifier.dataformat;
 
 import java.util.Map;
 
+import org.apache.camel.CamelContext;
 import org.apache.camel.model.DataFormatDefinition;
 import org.apache.camel.model.dataformat.FhirDataformat;
 
 public class FhirDataFormatReifier<T extends FhirDataformat> extends DataFormatReifier<T> {
 
-    public FhirDataFormatReifier(DataFormatDefinition definition) {
-        super((T)definition);
+    public FhirDataFormatReifier(CamelContext camelContext, DataFormatDefinition definition) {
+        super(camelContext, (T)definition);
     }
 
     @Override
@@ -39,11 +40,11 @@ public class FhirDataFormatReifier<T extends FhirDataformat> extends DataFormatR
         properties.put("preferTypes", definition.getPreferTypes());
         properties.put("parserOptions", definition.getParserOptions());
         properties.put("parserErrorHandler", definition.getParserErrorHandler());
-        properties.put("encodeElementsAppliesToChildResourcesOnly", definition.isEncodeElementsAppliesToChildResourcesOnly());
-        properties.put("omitResourceId", definition.isOmitResourceId());
-        properties.put("prettyPrint", definition.isPrettyPrint());
-        properties.put("suppressNarratives", definition.isSuppressNarratives());
-        properties.put("summaryMode", definition.isSummaryMode());
+        properties.put("encodeElementsAppliesToChildResourcesOnly", definition.getEncodeElementsAppliesToChildResourcesOnly());
+        properties.put("omitResourceId", definition.getOmitResourceId());
+        properties.put("prettyPrint", definition.getPrettyPrint());
+        properties.put("suppressNarratives", definition.getSuppressNarratives());
+        properties.put("summaryMode", definition.getSummaryMode());
         properties.put("overrideResourceIdWithBundleEntryFullUrl", definition.getOverrideResourceIdWithBundleEntryFullUrl());
         properties.put("stripVersionsFromReferences", definition.getStripVersionsFromReferences());
     }

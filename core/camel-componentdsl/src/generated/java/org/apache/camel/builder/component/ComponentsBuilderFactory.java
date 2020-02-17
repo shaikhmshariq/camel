@@ -473,6 +473,30 @@ public interface ComponentsBuilderFactory {
         return org.apache.camel.builder.component.dsl.Aws2CwComponentBuilderFactory.aws2Cw();
     }
     /**
+     * AWS 2 DynamoDB (camel-aws2-ddb)
+     * The aws2-ddb component is used for storing and retrieving data from
+     * Amazon's DynamoDB service.
+     * 
+     * Category: cloud,database,nosql
+     * Since: 3.1
+     * Maven coordinates: org.apache.camel:camel-aws2-ddb
+     */
+    static org.apache.camel.builder.component.dsl.Aws2DdbComponentBuilderFactory.Aws2DdbComponentBuilder aws2Ddb() {
+        return org.apache.camel.builder.component.dsl.Aws2DdbComponentBuilderFactory.aws2Ddb();
+    }
+    /**
+     * AWS 2 DynamoDB Streams (camel-aws2-ddb)
+     * The aws2-ddbstream component is used for working with Amazon DynamoDB
+     * Streams.
+     * 
+     * Category: cloud,messaging,streams
+     * Since: 3.1
+     * Maven coordinates: org.apache.camel:camel-aws2-ddb
+     */
+    static org.apache.camel.builder.component.dsl.Aws2DdbstreamComponentBuilderFactory.Aws2DdbstreamComponentBuilder aws2Ddbstream() {
+        return org.apache.camel.builder.component.dsl.Aws2DdbstreamComponentBuilderFactory.aws2Ddbstream();
+    }
+    /**
      * AWS 2 EC2 (camel-aws2-ec2)
      * The aws2-ec2 is used for managing Amazon EC2 instances.
      * 
@@ -507,7 +531,7 @@ public interface ComponentsBuilderFactory {
     }
     /**
      * AWS 2 IAM (camel-aws2-iam)
-     * The aws-iam is used for managing Amazon IAM
+     * The aws2-iam is used for managing Amazon IAM
      * 
      * Category: cloud,management
      * Since: 3.1
@@ -548,6 +572,42 @@ public interface ComponentsBuilderFactory {
      */
     static org.apache.camel.builder.component.dsl.Aws2MskComponentBuilderFactory.Aws2MskComponentBuilder aws2Msk() {
         return org.apache.camel.builder.component.dsl.Aws2MskComponentBuilderFactory.aws2Msk();
+    }
+    /**
+     * AWS 2 Simple Email Service (camel-aws2-ses)
+     * The aws2-ses component is used for sending emails with Amazon's SES
+     * service.
+     * 
+     * Category: cloud,mail
+     * Since: 3.1
+     * Maven coordinates: org.apache.camel:camel-aws2-ses
+     */
+    static org.apache.camel.builder.component.dsl.Aws2SesComponentBuilderFactory.Aws2SesComponentBuilder aws2Ses() {
+        return org.apache.camel.builder.component.dsl.Aws2SesComponentBuilderFactory.aws2Ses();
+    }
+    /**
+     * AWS 2 Simple Notification System (camel-aws2-sns)
+     * The aws2-sns component is used for sending messages to an Amazon Simple
+     * Notification Topic.
+     * 
+     * Category: cloud,mobile,messaging
+     * Since: 3.1
+     * Maven coordinates: org.apache.camel:camel-aws2-sns
+     */
+    static org.apache.camel.builder.component.dsl.Aws2SnsComponentBuilderFactory.Aws2SnsComponentBuilder aws2Sns() {
+        return org.apache.camel.builder.component.dsl.Aws2SnsComponentBuilderFactory.aws2Sns();
+    }
+    /**
+     * AWS 2 Simple Queue Service (camel-aws2-sqs)
+     * The aws2-sqs component is used for sending and receiving messages to
+     * Amazon's SQS service.
+     * 
+     * Category: cloud,messaging
+     * Since: 3.1
+     * Maven coordinates: org.apache.camel:camel-aws2-sqs
+     */
+    static org.apache.camel.builder.component.dsl.Aws2SqsComponentBuilderFactory.Aws2SqsComponentBuilder aws2Sqs() {
+        return org.apache.camel.builder.component.dsl.Aws2SqsComponentBuilderFactory.aws2Sqs();
     }
     /**
      * AWS 2 Translate (camel-aws2-translate)
@@ -1203,7 +1263,18 @@ public interface ComponentsBuilderFactory {
         return org.apache.camel.builder.component.dsl.ElytronComponentBuilderFactory.elytron();
     }
     /**
-     * Etcd (camel-etcd)
+     * Etcd Keys (camel-etcd)
+     * Camel Etcd support
+     * 
+     * Category: clustering,database
+     * Since: 2.18
+     * Maven coordinates: org.apache.camel:camel-etcd
+     */
+    static org.apache.camel.builder.component.dsl.EtcdKeysComponentBuilderFactory.EtcdKeysComponentBuilder etcdKeys() {
+        return org.apache.camel.builder.component.dsl.EtcdKeysComponentBuilderFactory.etcdKeys();
+    }
+    /**
+     * Etcd Stats (camel-etcd)
      * The camel etcd component allows you to work with Etcd, a distributed
      * reliable key-value store.
      * 
@@ -1211,8 +1282,20 @@ public interface ComponentsBuilderFactory {
      * Since: 2.18
      * Maven coordinates: org.apache.camel:camel-etcd
      */
-    static org.apache.camel.builder.component.dsl.EtcdComponentBuilderFactory.EtcdComponentBuilder etcd() {
-        return org.apache.camel.builder.component.dsl.EtcdComponentBuilderFactory.etcd();
+    static org.apache.camel.builder.component.dsl.EtcdStatsComponentBuilderFactory.EtcdStatsComponentBuilder etcdStats() {
+        return org.apache.camel.builder.component.dsl.EtcdStatsComponentBuilderFactory.etcdStats();
+    }
+    /**
+     * Etcd Watch (camel-etcd)
+     * The camel etcd component allows you to work with Etcd, a distributed
+     * reliable key-value store.
+     * 
+     * Category: clustering,database
+     * Since: 2.18
+     * Maven coordinates: org.apache.camel:camel-etcd
+     */
+    static org.apache.camel.builder.component.dsl.EtcdWatchComponentBuilderFactory.EtcdWatchComponentBuilder etcdWatch() {
+        return org.apache.camel.builder.component.dsl.EtcdWatchComponentBuilderFactory.etcdWatch();
     }
     /**
      * OSGi EventAdmin (camel-eventadmin)
@@ -3846,15 +3929,26 @@ public interface ComponentsBuilderFactory {
         return org.apache.camel.builder.component.dsl.XjComponentBuilderFactory.xj();
     }
     /**
-     * XML Security (camel-xmlsecurity)
-     * Used to sign and verify exchanges using the XML signature specification.
+     * XML Security Sign (camel-xmlsecurity)
+     * Used to sign exchanges using the XML signature specification.
      * 
      * Category: security,transformation
      * Since: 2.12
      * Maven coordinates: org.apache.camel:camel-xmlsecurity
      */
-    static org.apache.camel.builder.component.dsl.XmlsecurityComponentBuilderFactory.XmlsecurityComponentBuilder xmlsecurity() {
-        return org.apache.camel.builder.component.dsl.XmlsecurityComponentBuilderFactory.xmlsecurity();
+    static org.apache.camel.builder.component.dsl.XmlsecuritySignComponentBuilderFactory.XmlsecuritySignComponentBuilder xmlsecuritySign() {
+        return org.apache.camel.builder.component.dsl.XmlsecuritySignComponentBuilderFactory.xmlsecuritySign();
+    }
+    /**
+     * XML Security Verify (camel-xmlsecurity)
+     * Used to verify exchanges using the XML signature specification.
+     * 
+     * Category: security,transformation
+     * Since: 2.12
+     * Maven coordinates: org.apache.camel:camel-xmlsecurity
+     */
+    static org.apache.camel.builder.component.dsl.XmlsecurityVerifyComponentBuilderFactory.XmlsecurityVerifyComponentBuilder xmlsecurityVerify() {
+        return org.apache.camel.builder.component.dsl.XmlsecurityVerifyComponentBuilderFactory.xmlsecurityVerify();
     }
     /**
      * XMPP (camel-xmpp)

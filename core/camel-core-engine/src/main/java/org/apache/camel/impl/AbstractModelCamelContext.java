@@ -104,11 +104,17 @@ public abstract class AbstractModelCamelContext extends AbstractCamelContext imp
 
     @Override
     public void addRouteDefinitions(Collection<RouteDefinition> routeDefinitions) throws Exception {
+        if (isStarted() && !isAllowAddingNewRoutes()) {
+            throw new IllegalArgumentException("Adding new routes after CamelContext has been started is not allowed");
+        }
         model.addRouteDefinitions(routeDefinitions);
     }
 
     @Override
     public void addRouteDefinition(RouteDefinition routeDefinition) throws Exception {
+        if (isStarted() && !isAllowAddingNewRoutes()) {
+            throw new IllegalArgumentException("Adding new routes after CamelContext has been started is not allowed");
+        }
         model.addRouteDefinition(routeDefinition);
     }
 
@@ -129,6 +135,9 @@ public abstract class AbstractModelCamelContext extends AbstractCamelContext imp
 
     @Override
     public void addRestDefinitions(Collection<RestDefinition> restDefinitions, boolean addToRoutes) throws Exception {
+        if (isStarted() && !isAllowAddingNewRoutes()) {
+            throw new IllegalArgumentException("Adding new routes after CamelContext has been started is not allowed");
+        }
         model.addRestDefinitions(restDefinitions, addToRoutes);
     }
 
@@ -283,7 +292,7 @@ public abstract class AbstractModelCamelContext extends AbstractCamelContext imp
             String id = e.getKey();
             DataFormatDefinition def = e.getValue();
             LOG.debug("Creating Dataformat with id: {} and definition: {}", id, def);
-            DataFormat df = DataFormatReifier.reifier(def).createDataFormat(this);
+            DataFormat df = DataFormatReifier.reifier(this, def).createDataFormat();
             addService(df, true);
             getRegistry().bind(id, df);
         }

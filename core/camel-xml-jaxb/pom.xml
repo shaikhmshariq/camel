@@ -31,7 +31,21 @@
     <name>Camel :: XML JAXB</name>
     <description>Camel XML JAXB</description>
 
+    <properties>
+        <camel.osgi.import>
+            javax.xml.bind.*;version="[2.2,3.0)",
+            *
+        </camel.osgi.import>
+    </properties>
+
     <dependencies>
+
+        <!-- need JAXB API -->
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <version>${jakarta-jaxb-version}</version>
+        </dependency>
 
         <!-- need JAXB implementation -->
         <dependency>

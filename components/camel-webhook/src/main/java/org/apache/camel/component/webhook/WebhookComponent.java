@@ -48,6 +48,9 @@ public class WebhookComponent extends DefaultComponent {
         }
 
         WebhookConfiguration config = configuration != null ? configuration.copy() : new WebhookConfiguration();
+        RestConfiguration restConfig = getCamelContext().getRestConfiguration(config.getWebhookComponentName(), true);
+        config.storeConfiguration(restConfig);
+
         WebhookEndpoint endpoint = new WebhookEndpoint(uri, this, config);
         setProperties(endpoint, parameters);
         // we need to apply the params here
@@ -55,9 +58,6 @@ public class WebhookComponent extends DefaultComponent {
             delegateUri = delegateUri + "?" + resolveDelegateUriQuery(uri, parameters);
         }
         endpoint.getConfiguration().setEndpointUri(delegateUri);
-
-        RestConfiguration restConfig = getCamelContext().getRestConfiguration(config.getWebhookComponentName(), true);
-        config.setRestConfiguration(restConfig);
 
         return endpoint;
     }

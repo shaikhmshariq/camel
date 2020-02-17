@@ -84,7 +84,6 @@
         <module>platforms</module>
         <module>catalog</module>
         <module>tests</module>
-        <module>examples</module>
         <module>docs</module>
     </modules>
 
@@ -127,7 +126,7 @@
         <errorprone-version>2.5</errorprone-version>
         <mycila-license-version>3.0</mycila-license-version>
         <gmavenplus-plugin-version>1.6.2</gmavenplus-plugin-version>
-        <groovy-version>2.5.9</groovy-version>
+        <groovy-version>3.0.0</groovy-version>
     </properties>
 
     <!-- Comment out the snapshot repositories as we don't need them now -->
@@ -197,6 +196,7 @@
                     <configuration>
                         <excludeSubProjects>false</excludeSubProjects>
                         <excludes>
+                            <exclude>**/generated/**</exclude>
                             <exclude>**/generated.txt</exclude>
                             <exclude>**/*.json</exclude>
                             <exclude>**/README</exclude>
@@ -243,6 +243,7 @@
                             <!-- camel-salesforce BSD license from salesforce developers -->
                             <exclude>**/CometDReplayExtension.java</exclude>
                             <exclude>**/LICENSE-SALESFORCE.txt</exclude>
+                            <exclude>**/LICENSE-ICU4J.txt</exclude>
                             <!-- camel-as2 -->
                             <exclude>**/mdnDescription.vm</exclude>
                             <!-- camel-jbpm -->
@@ -279,6 +280,7 @@
                             <exclude>
                                 **/src/main/resources/META-INF/services/org.kie.server.services.api.KieServerExtension
                             </exclude>
+                            <exclude>**/META-INF/MANIFEST.MF</exclude>
                             <!-- Maven Wrapper -->
                             <exclude>.mvn/**/*</exclude>
                         </excludes>
@@ -319,6 +321,12 @@
                             <phase>disabled</phase>
                         </execution>
                     </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>versions-maven-plugin</artifactId>
+                    <version>2.7</version>
                 </plugin>
 
                 <plugin>

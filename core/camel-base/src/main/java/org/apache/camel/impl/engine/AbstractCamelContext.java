@@ -50,6 +50,7 @@ import org.apache.camel.Consumer;
 import org.apache.camel.ConsumerTemplate;
 import org.apache.camel.Endpoint;
 import org.apache.camel.ErrorHandlerFactory;
+import org.apache.camel.ExchangeConstantProvider;
 import org.apache.camel.ExtendedCamelContext;
 import org.apache.camel.ExtendedStartupListener;
 import org.apache.camel.FailedToStartRouteException;
@@ -79,6 +80,7 @@ import org.apache.camel.catalog.RuntimeCamelCatalog;
 import org.apache.camel.impl.transformer.TransformerKey;
 import org.apache.camel.impl.validator.ValidatorKey;
 import org.apache.camel.spi.AnnotationBasedProcessorFactory;
+import org.apache.camel.spi.AnnotationScanTypeConverters;
 import org.apache.camel.spi.AsyncProcessorAwaitManager;
 import org.apache.camel.spi.BeanIntrospection;
 import org.apache.camel.spi.BeanProcessorFactory;
@@ -88,6 +90,7 @@ import org.apache.camel.spi.CamelContextNameStrategy;
 import org.apache.camel.spi.CamelContextTracker;
 import org.apache.camel.spi.ClassResolver;
 import org.apache.camel.spi.ComponentResolver;
+import org.apache.camel.spi.ConfigurerResolver;
 import org.apache.camel.spi.DataFormat;
 import org.apache.camel.spi.DataFormatResolver;
 import org.apache.camel.spi.DataType;
@@ -122,6 +125,7 @@ import org.apache.camel.spi.ProcessorFactory;
 import org.apache.camel.spi.PropertiesComponent;
 import org.apache.camel.spi.ReactiveExecutor;
 import org.apache.camel.spi.Registry;
+import org.apache.camel.spi.ReifierStrategy;
 import org.apache.camel.spi.RestConfiguration;
 import org.apache.camel.spi.RestRegistry;
 import org.apache.camel.spi.RestRegistryFactory;
@@ -210,7 +214,7 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     private Boolean logExhaustedMessageBody = Boolean.FALSE;
     private Boolean streamCache = Boolean.FALSE;
     private Boolean disableJMX = Boolean.FALSE;
-    private Boolean loadTypeConverters = Boolean.TRUE;
+    private Boolean loadTypeConverters = Boolean.FALSE;
     private Boolean typeConverterStatisticsEnabled = Boolean.FALSE;
     private Boolean useMDCLogging = Boolean.FALSE;
     private String mdcLoggingKeysPattern;
@@ -218,6 +222,8 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     private Boolean useBreadcrumb = Boolean.FALSE;
     private Boolean allowUseOriginalMessage = Boolean.FALSE;
     private Boolean caseInsensitiveHeaders = Boolean.TRUE;
+    private boolean allowAddingNewRoutes = true;
+    private ReifierStrategy reifierStrategy;
     private Long delay;
     private ErrorHandlerFactory errorHandlerFactory;
     private Map<String, String> globalOptions = new HashMap<>();
@@ -238,6 +244,7 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     private volatile CamelBeanPostProcessor beanPostProcessor;
     private volatile ComponentResolver componentResolver;
     private volatile LanguageResolver languageResolver;
+    private volatile ConfigurerResolver configurerResolver;
     private volatile DataFormatResolver dataFormatResolver;
     private volatile ManagementStrategy managementStrategy;
     private volatile ManagementMBeanAssembler managementMBeanAssembler;
@@ -335,11 +342,24 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
         }
     }
 
+    /**
+     * Whether to eager create {@link TypeConverter} during initialization of CamelContext.
+     * This is enabled by default to optimize camel-core.
+     */
+    protected boolean eagerCreateTypeConverter() {
+        return true;
+    }
+
     @Override
     public void doInit() throws Exception {
         if (initialization != Initialization.Lazy) {
             // initialize LRUCacheFactory as eager as possible, to let it warm up concurrently while Camel is startup up
             LRUCacheFactory.init();
+        }
+
+        // setup type converter eager as its highly in use and should not be lazy initialized
+        if (eagerCreateTypeConverter()) {
+            getOrCreateTypeConverter();
         }
 
         // setup management first since end users may use it to add event
@@ -818,6 +838,7 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     @Override
     public Endpoint getEndpoint(String uri, Map<String, Object> parameters) {
+        // ensure CamelContext are initialized before we can get an endpoint
         init();
 
         StringHelper.notEmpty(uri, "uri");
@@ -1118,6 +1139,10 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     }
 
     public void addRoute(Route route) {
+        if (isStarted() && !isAllowAddingNewRoutes()) {
+            throw new IllegalArgumentException("Adding new routes after CamelContext has been started is not allowed");
+        }
+
         synchronized (this.routes) {
             this.routes.add(route);
         }
@@ -1125,6 +1150,10 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     @Override
     public void addRoutes(final RoutesBuilder builder) throws Exception {
+        if (isStarted() && !isAllowAddingNewRoutes()) {
+            throw new IllegalArgumentException("Adding new routes after CamelContext has been started is not allowed");
+        }
+
         init();
         LOG.debug("Adding routes from builder: {}", builder);
         doWithDefinedClassLoader(() -> builder.addRoutesToCamelContext(AbstractCamelContext.this));
@@ -1674,6 +1703,18 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
             LOG.debug("Resolved text: {} -> {}", text, answer);
             return answer;
         }
+        // is the value a known field (currently we only support
+        // constants from Exchange.class)
+        if (text != null && text.startsWith("Exchange.")) {
+            String field = StringHelper.after(text, "Exchange.");
+            String constant = ExchangeConstantProvider.lookup(field);
+            if (constant != null) {
+                LOG.debug("Resolved constant: {} -> {}", text, constant);
+                return constant;
+            } else {
+                throw new IllegalArgumentException("Constant field with name: " + field + " not found on Exchange.class");
+            }
+        }
 
         // return original text as is
         return text;
@@ -1684,6 +1725,10 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     @Override
     public TypeConverter getTypeConverter() {
+        return typeConverter;
+    }
+
+    protected TypeConverter getOrCreateTypeConverter() {
         if (typeConverter == null) {
             synchronized (lock) {
                 if (typeConverter == null) {
@@ -1808,12 +1853,47 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
         this.languageResolver = doAddService(languageResolver);
     }
 
+    public ConfigurerResolver getConfigurerResolver() {
+        if (configurerResolver == null) {
+            synchronized (lock) {
+                if (configurerResolver == null) {
+                    setConfigurerResolver(createConfigurerResolver());
+                }
+            }
+        }
+        return configurerResolver;
+    }
+
+    public void setConfigurerResolver(ConfigurerResolver configurerResolver) {
+        this.configurerResolver = doAddService(configurerResolver);
+    }
+
     public boolean isAutoCreateComponents() {
         return autoCreateComponents;
     }
 
     public void setAutoCreateComponents(boolean autoCreateComponents) {
         this.autoCreateComponents = autoCreateComponents;
+    }
+
+    @Override
+    public boolean isAllowAddingNewRoutes() {
+        return allowAddingNewRoutes;
+    }
+
+    @Override
+    public void setAllowAddingNewRoutes(boolean allowAddingNewRoutes) {
+        this.allowAddingNewRoutes = allowAddingNewRoutes;
+    }
+
+    @Override
+    public ReifierStrategy getReifierStrategy() {
+        return reifierStrategy;
+    }
+
+    @Override
+    public void setReifierStrategy(ReifierStrategy reifierStrategy) {
+        this.reifierStrategy = reifierStrategy;
     }
 
     @Override
@@ -2378,6 +2458,11 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
                     }
                 }
 
+                if (!isAllowAddingNewRoutes()) {
+                    LOG.info("Adding new routes after CamelContext has started is not allowed");
+                    disallowAddingNewRoutes();
+                }
+
                 final Collection<Route> controlledRoutes = getRouteController().getControlledRoutes();
                 if (controlledRoutes.isEmpty()) {
                     LOG.info("Total {} routes, of which {} are started", getRoutes().size(), started);
@@ -2404,6 +2489,12 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
             }
         }
     }
+
+    /**
+     * Strategy invoked when adding new routes after CamelContext has been started is not allowed.
+     * This is used to do some internal optimizations.
+     */
+    protected abstract void disallowAddingNewRoutes();
 
     @Override
     public void stop() {
@@ -2464,6 +2555,10 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     }
 
     protected void doStartCamel() throws Exception {
+        // ensure additional type converters is loaded
+        if (loadTypeConverters && typeConverter instanceof AnnotationScanTypeConverters) {
+            ((AnnotationScanTypeConverters) typeConverter).scanTypeConverters();
+        }
 
         // custom properties may use property placeholders so resolve those
         // early on
@@ -3348,6 +3443,7 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
         getInjector();
         getRegistry();
         getLanguageResolver();
+        getConfigurerResolver();
         getExecutorServiceManager();
         getInflightRepository();
         getAsyncProcessorAwaitManager();
@@ -3378,7 +3474,6 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
         getClassResolver();
         getNodeIdFactory();
         getProcessorFactory();
-        getStreamCachingStrategy();
         getModelJAXBContextFactory();
         getUuidGenerator();
         getUnitOfWorkFactory();
@@ -4349,6 +4444,8 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     protected abstract Tracer createTracer();
 
     protected abstract LanguageResolver createLanguageResolver();
+
+    protected abstract ConfigurerResolver createConfigurerResolver();
 
     protected abstract RestRegistryFactory createRestRegistryFactory();
 

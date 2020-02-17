@@ -18,19 +18,20 @@ package org.apache.camel.reifier.dataformat;
 
 import java.util.Map;
 
+import org.apache.camel.CamelContext;
 import org.apache.camel.model.DataFormatDefinition;
 import org.apache.camel.model.dataformat.HL7DataFormat;
 
 public class HL7DataFormatReifier extends DataFormatReifier<HL7DataFormat> {
 
-    public HL7DataFormatReifier(DataFormatDefinition definition) {
-        super((HL7DataFormat)definition);
+    public HL7DataFormatReifier(CamelContext camelContext, DataFormatDefinition definition) {
+        super(camelContext, (HL7DataFormat)definition);
     }
 
     @Override
     protected void prepareDataFormatConfig(Map<String, Object> properties) {
         properties.put("parser", definition.getParser());
-        properties.put("validate", definition.isValidate());
+        properties.put("validate", definition.getValidate());
     }
 
 }
