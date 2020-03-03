@@ -16,13 +16,14 @@
  */
 package org.apache.camel.component.yammer;
 
+import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.spi.Metadata;
 import org.apache.camel.spi.UriParam;
 import org.apache.camel.spi.UriParams;
 import org.apache.camel.spi.UriPath;
 
 @UriParams
-public class YammerConfiguration {
+public class YammerConfiguration implements Cloneable {
 
     @UriPath @Metadata(required = true)
     private YammerFunctionType function;
@@ -48,6 +49,18 @@ public class YammerConfiguration {
     private String userId;
     @UriParam(label = "advanced")
     private ApiRequestor requestor;
+
+    /**
+     * Returns a copy of this configuration
+     */
+    public YammerConfiguration copy() {
+        try {
+            YammerConfiguration copy = (YammerConfiguration)clone();
+            return copy;
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeCamelException(e);
+        }
+    }
 
     public String getConsumerKey() {
         return consumerKey;
@@ -133,7 +146,7 @@ public class YammerConfiguration {
     /**
      * Returns messages older than the message ID specified as a numeric string.
      * This is useful for paginating messages. For example, if you're currently viewing 20 messages and the oldest is number 2912,
-     * you could append "?olderThan=2912″ to your request to get the 20 messages prior to those you're seeing.
+     * you could append olderThan=2912 to your request to get the 20 messages prior to those you're seeing.
      */
     public void setOlderThan(long olderThan) {
         this.olderThan = olderThan;
@@ -145,7 +158,7 @@ public class YammerConfiguration {
 
     /**
      * Returns messages newer than the message ID specified as a numeric string. This should be used when polling for new messages.
-     * If you're looking at messages, and the most recent message returned is 3516, you can make a request with the parameter "?newerThan=3516″
+     * If you're looking at messages, and the most recent message returned is 3516, you can make a request with the parameter newerThan=3516
      * to ensure that you do not get duplicate copies of messages already on your page.
      */
     public void setNewerThan(long newerThan) {

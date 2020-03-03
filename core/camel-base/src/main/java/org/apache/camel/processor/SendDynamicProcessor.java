@@ -23,12 +23,15 @@ import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.Expression;
+import org.apache.camel.ExtendedCamelContext;
 import org.apache.camel.NoTypeConversionAvailableException;
 import org.apache.camel.Processor;
 import org.apache.camel.ResolveEndpointFailedException;
 import org.apache.camel.impl.engine.DefaultProducerCache;
+import org.apache.camel.impl.engine.EmptyProducerCache;
 import org.apache.camel.spi.EndpointUtilizationStatistics;
 import org.apache.camel.spi.IdAware;
+import org.apache.camel.spi.NormalizedEndpointUri;
 import org.apache.camel.spi.ProducerCache;
 import org.apache.camel.spi.RouteIdAware;
 import org.apache.camel.spi.SendDynamicAware;
@@ -112,6 +115,7 @@ public class SendDynamicProcessor extends AsyncProcessorSupport implements IdAwa
         Processor preAwareProcessor = null;
         Processor postAwareProcessor = null;
         String staticUri = null;
+        boolean prototype = cacheSize < 0;
         try {
             recipient = expression.evaluate(exchange, Object.class);
             if (dynamicAware != null) {
@@ -133,18 +137,23 @@ public class SendDynamicProcessor extends AsyncProcessorSupport implements IdAwa
                     }
                 }
             }
-            if (staticUri != null) {
-                endpoint = resolveEndpoint(exchange, staticUri);
-            } else {
-                endpoint = resolveEndpoint(exchange, recipient);
-            }
-            if (endpoint == null) {
+            Object targetRecipient = staticUri != null ? staticUri : recipient;
+            targetRecipient = prepareRecipient(exchange, targetRecipient);
+            if (targetRecipient == null) {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Send dynamic evaluated as null so cannot send to any endpoint");
                 }
                 // no endpoint to send to, so ignore
                 callback.done(true);
                 return true;
+            }
+            Endpoint existing = getExistingEndpoint(exchange, targetRecipient);
+            if (existing == null) {
+                endpoint = resolveEndpoint(exchange, targetRecipient, prototype);
+            } else {
+                endpoint = existing;
+                // we have an existing endpoint then its not a prototype scope
+                prototype = false;
             }
             destinationExchangePattern = EndpointHelper.resolveExchangePatternFromUrl(endpoint.getEndpointUri());
         } catch (Throwable e) {
@@ -164,6 +173,7 @@ public class SendDynamicProcessor extends AsyncProcessorSupport implements IdAwa
         final Processor postProcessor = postAwareProcessor;
         // destination exchange pattern overrides pattern
         final ExchangePattern pattern = destinationExchangePattern != null ? destinationExchangePattern : this.pattern;
+        final boolean stopEndpoint = prototype;
         return producerCache.doInAsyncProducer(endpoint, exchange, callback, (p, e, c) -> {
             final Exchange target = configureExchange(e, pattern, endpoint);
             try {
@@ -189,6 +199,10 @@ public class SendDynamicProcessor extends AsyncProcessorSupport implements IdAwa
                         }
                     } catch (Throwable e) {
                         target.setException(e);
+                    }
+                    // stop endpoint if prototype as it was only used once
+                    if (stopEndpoint) {
+                        ServiceHelper.stopAndShutdownService(endpoint);
                     }
                     // signal we are done
                     c.done(doneSync);
@@ -227,22 +241,47 @@ public class SendDynamicProcessor extends AsyncProcessorSupport implements IdAwa
         return ExchangeHelper.resolveScheme(uri);
     }
 
-    protected static Endpoint resolveEndpoint(Exchange exchange, Object recipient) throws NoTypeConversionAvailableException {
-        // trim strings as end users might have added spaces between separators
-        if (recipient instanceof String) {
+    protected static Object prepareRecipient(Exchange exchange, Object recipient) throws NoTypeConversionAvailableException {
+        if (recipient instanceof Endpoint || recipient instanceof NormalizedEndpointUri) {
+            return recipient;
+        } else if (recipient instanceof String) {
+            // trim strings as end users might have added spaces between separators
             recipient = ((String) recipient).trim();
-        } else if (recipient instanceof Endpoint) {
-            return (Endpoint) recipient;
-        } else if (recipient != null) {
-            // convert to a string type we can work with
-            recipient = exchange.getContext().getTypeConverter().mandatoryConvertTo(String.class, exchange, recipient);
         }
-
         if (recipient != null) {
-            return ExchangeHelper.resolveEndpoint(exchange, recipient);
-        } else {
-            return null;
+            ExtendedCamelContext ecc = (ExtendedCamelContext) exchange.getContext();
+            String uri;
+            if (recipient instanceof String) {
+                uri = (String) recipient;
+            } else {
+                // convert to a string type we can work with
+                uri = ecc.getTypeConverter().mandatoryConvertTo(String.class, exchange, recipient);
+            }
+            // optimize and normalize endpoint
+            return ecc.normalizeUri(uri);
         }
+        return null;
+    }
+
+    protected static Endpoint getExistingEndpoint(Exchange exchange, Object recipient) {
+        if (recipient instanceof Endpoint) {
+            return (Endpoint) recipient;
+        }
+        if (recipient != null) {
+            if (recipient instanceof NormalizedEndpointUri) {
+                NormalizedEndpointUri nu = (NormalizedEndpointUri) recipient;
+                ExtendedCamelContext ecc = (ExtendedCamelContext) exchange.getContext();
+                return ecc.hasEndpoint(nu);
+            } else {
+                String uri = recipient.toString();
+                return exchange.getContext().hasEndpoint(uri);
+            }
+        }
+        return null;
+    }
+
+    protected static Endpoint resolveEndpoint(Exchange exchange, Object recipient, boolean prototype) {
+        return prototype ? ExchangeHelper.resolvePrototypeEndpoint(exchange, recipient) : ExchangeHelper.resolveEndpoint(exchange, recipient);
     }
 
     protected Exchange configureExchange(Exchange exchange, ExchangePattern pattern, Endpoint endpoint) {
@@ -257,8 +296,13 @@ public class SendDynamicProcessor extends AsyncProcessorSupport implements IdAwa
     @Override
     protected void doStart() throws Exception {
         if (producerCache == null) {
-            producerCache = new DefaultProducerCache(this, camelContext, cacheSize);
-            LOG.debug("DynamicSendTo {} using ProducerCache with cacheSize={}", this, producerCache.getCapacity());
+            if (cacheSize < 0) {
+                producerCache = new EmptyProducerCache(this, camelContext);
+                LOG.debug("DynamicSendTo {} is not using ProducerCache", this);
+            } else {
+                producerCache = new DefaultProducerCache(this, camelContext, cacheSize);
+                LOG.debug("DynamicSendTo {} using ProducerCache with cacheSize={}", this, cacheSize);
+            }
         }
 
         if (isAllowOptimisedComponents() && uri != null) {

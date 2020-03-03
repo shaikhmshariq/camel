@@ -54,6 +54,7 @@
     <bundle>mvn:org.apache.camel/camel-base/${project.version}</bundle>
     <bundle>mvn:org.apache.camel/camel-management/${project.version}</bundle>
     <bundle>mvn:org.apache.camel/camel-core-engine/${project.version}</bundle>
+    <bundle>mvn:org.apache.camel/camel-core-languages/${project.version}</bundle>
     <bundle>mvn:org.apache.camel/camel-core-osgi/${project.version}</bundle>
     <bundle>mvn:org.apache.camel/camel-core-catalog/${project.version}</bundle>
     <bundle>mvn:org.apache.camel/camel-cloud/${project.version}</bundle>
@@ -672,7 +673,7 @@
     <feature version='${project.version}'>camel-core</feature>
     <bundle dependency='true'>mvn:commons-io/commons-io/${commons-io-version}</bundle>
     <bundle dependency='true'>mvn:org.ow2.asm/asm/${asm-version}</bundle>
-    <bundle dependency='true'>mvn:net.minidev/json-smart-action/${json-smart-version}</bundle>
+    <bundle dependency='true'>mvn:net.minidev/json-smart/${json-smart-version}</bundle>
     <bundle dependency='true'>mvn:net.minidev/accessors-smart/${json-accessors-smart-version}</bundle>
     <bundle dependency='true'>mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.chunk-templates/${chunk-templates-bundle-version}</bundle>
     <bundle>mvn:org.apache.camel/camel-chunk/${project.version}</bundle>
@@ -1125,22 +1126,6 @@
     <bundle dependency='true'>mvn:com.google.guava/guava/${google-mail-guava-version}</bundle>
     <bundle>mvn:org.apache.camel/camel-google-mail/${project.version}</bundle>
   </feature>
-  <feature name='camel-google-pubsub' version='${project.version}' start-level='50'>
-    <feature version='${project.version}'>camel-core</feature>
-    <bundle dependency='true'>wrap:mvn:com.google.apis/google-api-services-pubsub/${google-api-services-pubsub-version}</bundle>
-    <bundle dependency='true'>wrap:mvn:com.google.api-client/google-api-client/${google-api-client-version}</bundle>
-    <bundle dependency='true'>mvn:commons-codec/commons-codec/${commons-codec-version}</bundle>
-    <bundle dependency='true'>wrap:mvn:com.google.http-client/google-http-client/${google-api-client-version}</bundle>
-    <bundle dependency='true'>wrap:mvn:com.google.http-client/google-http-client-jackson2/${google-api-client-version}</bundle>
-    <bundle dependency='true'>wrap:mvn:com.google.oauth-client/google-oauth-client/${google-api-client-version}</bundle>
-    <bundle dependency='true'>wrap:mvn:com.google.oauth-client/google-oauth-client-java6/${google-api-client-version}</bundle>
-    <bundle dependency='true'>wrap:mvn:com.google.oauth-client/google-oauth-client-jetty/${google-api-client-version}</bundle>
-    <bundle dependency='true'>mvn:com.fasterxml.jackson.core/jackson-core/${jackson2-version}</bundle>
-    <bundle dependency='true'>mvn:org.apache.httpcomponents/httpcore-osgi/${httpcore4-version}</bundle>
-    <bundle dependency='true'>mvn:org.apache.httpcomponents/httpclient-osgi/${httpclient4-version}</bundle>
-    <bundle dependency='true'>mvn:javax.servlet/javax.servlet-api/${javax-servlet-api-version}</bundle>
-    <bundle>mvn:org.apache.camel/camel-google-pubsub/${project.version}</bundle>
-  </feature>
   <feature name='camel-grape' version='${project.version}' start-level='50'>
     <feature version='${project.version}'>camel-core</feature>
     <bundle dependency='true'>mvn:org.codehaus.groovy/groovy/${groovy-version}</bundle>
@@ -1520,6 +1505,7 @@
   <feature name='camel-jooq' version='${project.version}' start-level='50'>
     <feature version='${project.version}'>camel-core</feature>
     <bundle dependency='true'>mvn:org.jooq/jooq/${jooq-version}</bundle>
+    <bundle dependency='true'>mvn:org.reactivestreams/reactive-streams/${reactive-streams-version}</bundle>
     <bundle>mvn:org.apache.camel/camel-jooq/${project.version}</bundle>
   </feature>
   <feature name='camel-johnzon' version='${project.version}' start-level='50'>
@@ -1581,7 +1567,7 @@
   <feature name='camel-jsonpath' version='${project.version}' start-level='50'>
     <feature version='${project.version}'>camel-core</feature>
     <bundle>mvn:com.jayway.jsonpath/json-path/${json-path-version}</bundle>
-    <bundle>mvn:net.minidev/json-smart-action/${json-smart-version}</bundle>
+    <bundle>mvn:net.minidev/json-smart/${json-smart-version}</bundle>
     <bundle>mvn:net.minidev/accessors-smart/${json-accessors-smart-version}</bundle>
     <bundle dependency='true'>mvn:org.ow2.asm/asm/${asm-version}</bundle>
     <bundle dependency='true'>mvn:com.fasterxml.jackson.core/jackson-core/${jackson2-version}</bundle>
@@ -1599,9 +1585,13 @@
   <feature name='camel-kafka' version='${project.version}' start-level='50'>
     <feature version='${project.version}'>camel-core</feature>
     <bundle dependency='true'>mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.kafka-clients/${kafka-bundle-version}</bundle>
-    <bundle dependency='true'>mvn:org.xerial.snappy/snappy-java/${snappy-version}</bundle>
     <bundle dependency='true'>wrap:mvn:org.lz4/lz4-java/${lz4-version}</bundle>
     <bundle>mvn:org.apache.camel/camel-kafka/${project.version}</bundle>
+    <feature dependency='true'>snappy</feature>
+  </feature>
+  <feature name='snappy'>
+    <requirement>osgi.native;filter:="(|(osgi.native.osname~=aix)(osgi.native.osname~=linux)(osgi.native.osname~=macosx)(osgi.native.osname~=win32))"</requirement>
+    <bundle>mvn:org.xerial.snappy/snappy-java/${snappy-version}</bundle>
   </feature>
   <feature name='camel-kubernetes' version='${project.version}' start-level='50'>
     <feature version='${project.version}'>camel-core</feature>

@@ -51,6 +51,8 @@ public class YAMLDataFormatReifier extends DataFormatReifier<YAMLDataFormat> {
         properties.put("representer", definition.getRepresenter());
         properties.put("dumperOptions", definition.getDumperOptions());
         properties.put("resolver", definition.getResolver());
+        properties.put("maxAliasesForCollections", definition.getMaxAliasesForCollections());
+        properties.put("allowRecursiveKeys", definition.getAllowRecursiveKeys());
     }
 
     private List<String> getTypeFilterDefinitions() {

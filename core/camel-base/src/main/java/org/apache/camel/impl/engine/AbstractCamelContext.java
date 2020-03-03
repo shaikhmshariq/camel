@@ -119,6 +119,7 @@ import org.apache.camel.spi.MessageHistoryFactory;
 import org.apache.camel.spi.ModelJAXBContextFactory;
 import org.apache.camel.spi.ModelToXMLDumper;
 import org.apache.camel.spi.NodeIdFactory;
+import org.apache.camel.spi.NormalizedEndpointUri;
 import org.apache.camel.spi.PackageScanClassResolver;
 import org.apache.camel.spi.PackageScanResourceResolver;
 import org.apache.camel.spi.ProcessorFactory;
@@ -149,6 +150,7 @@ import org.apache.camel.support.CamelContextHelper;
 import org.apache.camel.support.EndpointHelper;
 import org.apache.camel.support.EventHelper;
 import org.apache.camel.support.LRUCacheFactory;
+import org.apache.camel.support.NormalizedUri;
 import org.apache.camel.support.OrderedComparator;
 import org.apache.camel.support.ProcessorEndpoint;
 import org.apache.camel.support.jsse.SSLContextParameters;
@@ -223,7 +225,6 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     private Boolean allowUseOriginalMessage = Boolean.FALSE;
     private Boolean caseInsensitiveHeaders = Boolean.TRUE;
     private boolean allowAddingNewRoutes = true;
-    private ReifierStrategy reifierStrategy;
     private Long delay;
     private ErrorHandlerFactory errorHandlerFactory;
     private Map<String, String> globalOptions = new HashMap<>();
@@ -352,23 +353,24 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     @Override
     public void doInit() throws Exception {
+        // Initialize LRUCacheFactory as eager as possible, 
+        // to let it warm up concurrently while Camel is startup up
         if (initialization != Initialization.Lazy) {
-            // initialize LRUCacheFactory as eager as possible, to let it warm up concurrently while Camel is startup up
             LRUCacheFactory.init();
         }
 
-        // setup type converter eager as its highly in use and should not be lazy initialized
-        if (eagerCreateTypeConverter()) {
-            getOrCreateTypeConverter();
-        }
-
-        // setup management first since end users may use it to add event
+        // Setup management first since end users may use it to add event
         // notifiers using the management strategy before the CamelContext has been started
         setupManagement(null);
 
         // Call all registered trackers with this context
         // Note, this may use a partially constructed object
         CamelContextTracker.notifyContextCreated(this);
+        
+        // Setup type converter eager as its highly in use and should not be lazy initialized
+        if (eagerCreateTypeConverter()) {
+            getOrCreateTypeConverter();
+        }
     }
 
     @Override
@@ -472,6 +474,9 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     @Override
     public Component hasComponent(String componentName) {
+        if (components.isEmpty()) {
+            return null;
+        }
         return components.get(componentName);
     }
 
@@ -672,7 +677,24 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     @Override
     public Endpoint hasEndpoint(String uri) {
+        if (endpoints.isEmpty()) {
+            return null;
+        }
         return endpoints.get(getEndpointKey(uri));
+    }
+
+    @Override
+    public Endpoint hasEndpoint(NormalizedEndpointUri uri) {
+        if (endpoints.isEmpty()) {
+            return null;
+        }
+        EndpointKey key;
+        if (uri instanceof EndpointKey) {
+            key = (EndpointKey) uri;
+        } else {
+            key = new EndpointKey(uri.getUri(), true);
+        }
+        return endpoints.get(key);
     }
 
     @Override
@@ -730,7 +752,37 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     }
 
     @Override
+    public NormalizedEndpointUri normalizeUri(String uri) {
+        try {
+            uri = resolvePropertyPlaceholders(uri);
+            uri = normalizeEndpointUri(uri);
+            return new NormalizedUri(uri);
+        } catch (Exception e) {
+            throw new ResolveEndpointFailedException(uri, e);
+        }
+    }
+
+    @Override
     public Endpoint getEndpoint(String uri) {
+        return doGetEndpoint(uri, false, false);
+    }
+
+    @Override
+    public Endpoint getEndpoint(NormalizedEndpointUri uri) {
+        return doGetEndpoint(uri.getUri(), true, false);
+    }
+
+    @Override
+    public Endpoint getPrototypeEndpoint(String uri) {
+        return doGetEndpoint(uri, false, true);
+    }
+
+    @Override
+    public Endpoint getPrototypeEndpoint(NormalizedEndpointUri uri) {
+        return doGetEndpoint(uri.getUri(), true, true);
+    }
+
+    protected Endpoint doGetEndpoint(String uri, boolean normalized, boolean prototype) {
         // ensure CamelContext are initialized before we can get an endpoint
         init();
 
@@ -740,25 +792,32 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
         // in case path has property placeholders then try to let property
         // component resolve those
-        try {
-            uri = resolvePropertyPlaceholders(uri);
-        } catch (Exception e) {
-            throw new ResolveEndpointFailedException(uri, e);
+        if (!normalized) {
+            try {
+                uri = resolvePropertyPlaceholders(uri);
+            } catch (Exception e) {
+                throw new ResolveEndpointFailedException(uri, e);
+            }
         }
 
         final String rawUri = uri;
 
         // normalize uri so we can do endpoint hits with minor mistakes and
         // parameters is not in the same order
-        uri = normalizeEndpointUri(uri);
+        if (!normalized) {
+            uri = normalizeEndpointUri(uri);
+        }
 
         LOG.trace("Getting endpoint with raw uri: {}, normalized uri: {}", rawUri, uri);
 
-        Endpoint answer;
         String scheme = null;
-        // use optimized method to get the endpoint uri
-        EndpointKey key = getEndpointKeyPreNormalized(uri);
-        answer = endpoints.get(key);
+        Endpoint answer = null;
+        if (!prototype) {
+            // use optimized method to get the endpoint uri
+            EndpointKey key = getEndpointKeyPreNormalized(uri);
+            // only lookup and reuse existing endpoints if not prototype scoped
+            answer = endpoints.get(key);
+        }
         if (answer == null) {
             try {
                 // Use the URI prefix to find the component.
@@ -820,8 +879,18 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
                 }
 
                 if (answer != null) {
-                    addService(answer);
-                    answer = addEndpointToRegistry(uri, answer);
+                    if (!prototype) {
+                        addService(answer);
+                        // register in registry
+                        answer = addEndpointToRegistry(uri, answer);
+                    } else {
+                        addPrototypeService(answer);
+                        // if there is endpoint strategies, then use the endpoints they return
+                        // as this allows to intercept endpoints etc.
+                        for (EndpointStrategy strategy : endpointStrategies) {
+                            answer = strategy.registerEndpoint(uri, answer);
+                        }
+                    }
                 }
             } catch (Exception e) {
                 throw new ResolveEndpointFailedException(uri, e);
@@ -1387,7 +1456,12 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     @Override
     public void addService(Object object, boolean stopOnShutdown, boolean forceStart) throws Exception {
-        internalAddService(object, stopOnShutdown, forceStart);
+        internalAddService(object, stopOnShutdown, forceStart, true);
+    }
+
+    @Override
+    public void addPrototypeService(Object object) throws Exception {
+        doAddService(object, false, true, false);
     }
 
     protected <T> T doAddService(T object) {
@@ -1395,19 +1469,20 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     }
 
     protected <T> T doAddService(T object, boolean stopOnShutdown) {
-        return doAddService(object, stopOnShutdown, true);
+        return doAddService(object, stopOnShutdown, true, true);
     }
 
-    protected <T> T doAddService(T object, boolean stopOnShutdown, boolean forceStart) {
+    protected <T> T doAddService(T object, boolean stopOnShutdown, boolean forceStart, boolean useLifecycleStrategies) {
         try {
-            internalAddService(object, stopOnShutdown, forceStart);
+            internalAddService(object, stopOnShutdown, forceStart, useLifecycleStrategies);
         } catch (Exception e) {
             throw RuntimeCamelException.wrapRuntimeCamelException(e);
         }
         return object;
     }
 
-    private void internalAddService(Object object, boolean stopOnShutdown, boolean forceStart) throws Exception {
+    private void internalAddService(Object object, boolean stopOnShutdown,
+                                    boolean forceStart, boolean useLifecycleStrategies) throws Exception {
 
         // inject CamelContext
         if (object instanceof CamelContextAware) {
@@ -1418,13 +1493,15 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
         if (object instanceof Service) {
             Service service = (Service)object;
 
-            for (LifecycleStrategy strategy : lifecycleStrategies) {
-                if (service instanceof Endpoint) {
-                    // use specialized endpoint add
-                    strategy.onEndpointAdd((Endpoint)service);
-                } else {
-                    Route route = setupRoute.get();
-                    strategy.onServiceAdd(this, service, route);
+            if (useLifecycleStrategies) {
+                for (LifecycleStrategy strategy : lifecycleStrategies) {
+                    if (service instanceof Endpoint) {
+                        // use specialized endpoint add
+                        strategy.onEndpointAdd((Endpoint) service);
+                    } else {
+                        Route route = setupRoute.get();
+                        strategy.onServiceAdd(this, service, route);
+                    }
                 }
             }
 
@@ -1474,6 +1551,9 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     @Override
     public boolean hasService(Object object) {
+        if (servicesToStop.isEmpty()) {
+            return false;
+        }
         if (object instanceof Service) {
             Service service = (Service)object;
             return servicesToStop.contains(service);
@@ -1483,6 +1563,9 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     @Override
     public <T> T hasService(Class<T> type) {
+        if (servicesToStop.isEmpty()) {
+            return null;
+        }
         for (Service service : servicesToStop) {
             if (type.isInstance(service)) {
                 return type.cast(service);
@@ -1492,7 +1575,11 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> Set<T> hasServices(Class<T> type) {
+        if (servicesToStop.isEmpty()) {
+            return Collections.EMPTY_SET;
+        }
         Set<T> set = new HashSet<>();
         for (Service service : servicesToStop) {
             if (type.isInstance(service)) {
@@ -1884,16 +1971,6 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     @Override
     public void setAllowAddingNewRoutes(boolean allowAddingNewRoutes) {
         this.allowAddingNewRoutes = allowAddingNewRoutes;
-    }
-
-    @Override
-    public ReifierStrategy getReifierStrategy() {
-        return reifierStrategy;
-    }
-
-    @Override
-    public void setReifierStrategy(ReifierStrategy reifierStrategy) {
-        this.reifierStrategy = reifierStrategy;
     }
 
     @Override
@@ -2494,7 +2571,9 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
      * Strategy invoked when adding new routes after CamelContext has been started is not allowed.
      * This is used to do some internal optimizations.
      */
-    protected abstract void disallowAddingNewRoutes();
+    protected void disallowAddingNewRoutes() {
+        ReifierStrategy.clearReifiers();
+    }
 
     @Override
     public void stop() {
@@ -4106,7 +4185,7 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     @Override
     public void setStreamCachingStrategy(StreamCachingStrategy streamCachingStrategy) {
-        this.streamCachingStrategy = doAddService(streamCachingStrategy, true, false);
+        this.streamCachingStrategy = doAddService(streamCachingStrategy, true, false, true);
     }
 
     @Override

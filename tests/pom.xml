@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.camel</groupId>
         <artifactId>camel-parent</artifactId>
-        <version>3.1.0-SNAPSHOT</version>
+        <version>3.2.0-SNAPSHOT</version>
         <relativePath>../parent</relativePath>
     </parent>
 
@@ -55,7 +55,7 @@
             <plugin>
                 <groupId>org.apache.camel</groupId>
                 <artifactId>camel-bundle-plugin</artifactId>
-                <version>${camel-bundle-plugin-version}</version>
+                <version>${project.version}</version>
                 <configuration>
                  </configuration>
                 <executions>

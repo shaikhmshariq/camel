@@ -16,7 +16,11 @@
  */
 package org.apache.camel;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.camel.spi.CamelContextNameStrategy;
 import org.apache.camel.spi.ClassResolver;
@@ -266,6 +270,17 @@ public interface CamelContext extends StatefulService, RuntimeConfiguration {
      * @throws Exception can be thrown when starting the service
      */
     void addService(Object object, boolean stopOnShutdown, boolean forceStart) throws Exception;
+
+    /**
+     * Adds a service to this CamelContext (prototype scope).
+     * <p/>
+     * The service will also have {@link CamelContext} injected if its {@link CamelContextAware}.
+     * The service will be started, if its not already started.
+     *
+     * @param object the service
+     * @throws Exception can be thrown when starting the service
+     */
+    void addPrototypeService(Object object) throws Exception;
 
     /**
      * Removes a service from this CamelContext.

@@ -26,6 +26,7 @@ import org.apache.camel.model.transformer.DataFormatTransformerDefinition;
 import org.apache.camel.model.transformer.EndpointTransformerDefinition;
 import org.apache.camel.model.transformer.TransformerDefinition;
 import org.apache.camel.reifier.AbstractReifier;
+import org.apache.camel.spi.ReifierStrategy;
 import org.apache.camel.spi.Transformer;
 
 public abstract class TransformerReifier<T> extends AbstractReifier {
@@ -37,6 +38,7 @@ public abstract class TransformerReifier<T> extends AbstractReifier {
         map.put(DataFormatTransformerDefinition.class, DataFormatTransformeReifier::new);
         map.put(EndpointTransformerDefinition.class, EndpointTransformeReifier::new);
         TRANSFORMERS = map;
+        ReifierStrategy.addReifierClearer(TransformerReifier::clearReifiers);
     }
 
     protected final T definition;
@@ -52,6 +54,10 @@ public abstract class TransformerReifier<T> extends AbstractReifier {
             return reifier.apply(camelContext, definition);
         }
         throw new IllegalStateException("Unsupported definition: " + definition);
+    }
+
+    public static void clearReifiers() {
+        TRANSFORMERS.clear();
     }
 
     public Transformer createTransformer() {

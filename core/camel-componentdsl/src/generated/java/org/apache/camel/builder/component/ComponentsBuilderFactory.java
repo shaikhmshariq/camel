@@ -541,6 +541,30 @@ public interface ComponentsBuilderFactory {
         return org.apache.camel.builder.component.dsl.Aws2IamComponentBuilderFactory.aws2Iam();
     }
     /**
+     * AWS 2 Kinesis (camel-aws2-kinesis)
+     * The aws2-kinesis component is for consuming and producing records from
+     * Amazon Kinesis Streams.
+     * 
+     * Category: cloud,messaging
+     * Since: 3.2
+     * Maven coordinates: org.apache.camel:camel-aws2-kinesis
+     */
+    static org.apache.camel.builder.component.dsl.Aws2KinesisComponentBuilderFactory.Aws2KinesisComponentBuilder aws2Kinesis() {
+        return org.apache.camel.builder.component.dsl.Aws2KinesisComponentBuilderFactory.aws2Kinesis();
+    }
+    /**
+     * AWS 2 Kinesis Firehose (camel-aws2-kinesis)
+     * The aws2-kinesis-firehose component is used for producing Amazon's
+     * Kinesis Firehose streams.
+     * 
+     * Category: cloud,messaging
+     * Since: 3.2
+     * Maven coordinates: org.apache.camel:camel-aws2-kinesis
+     */
+    static org.apache.camel.builder.component.dsl.Aws2KinesisFirehoseComponentBuilderFactory.Aws2KinesisFirehoseComponentBuilder aws2KinesisFirehose() {
+        return org.apache.camel.builder.component.dsl.Aws2KinesisFirehoseComponentBuilderFactory.aws2KinesisFirehose();
+    }
+    /**
      * AWS 2 KMS (camel-aws2-kms)
      * The aws2-kms is used for managing Amazon KMS
      * 
@@ -550,6 +574,18 @@ public interface ComponentsBuilderFactory {
      */
     static org.apache.camel.builder.component.dsl.Aws2KmsComponentBuilderFactory.Aws2KmsComponentBuilder aws2Kms() {
         return org.apache.camel.builder.component.dsl.Aws2KmsComponentBuilderFactory.aws2Kms();
+    }
+    /**
+     * AWS Lambda (camel-aws2-lambda)
+     * The aws2-lambda is used for managing and invoking functions from Amazon
+     * Lambda.
+     * 
+     * Category: cloud,computing,serverless
+     * Since: 3.2
+     * Maven coordinates: org.apache.camel:camel-aws2-lambda
+     */
+    static org.apache.camel.builder.component.dsl.Aws2LambdaComponentBuilderFactory.Aws2LambdaComponentBuilder aws2Lambda() {
+        return org.apache.camel.builder.component.dsl.Aws2LambdaComponentBuilderFactory.aws2Lambda();
     }
     /**
      * AWS 2 MQ (camel-aws2-mq)
@@ -1565,7 +1601,8 @@ public interface ComponentsBuilderFactory {
     }
     /**
      * Google Pubsub (camel-google-pubsub)
-     * Messaging client for Google Cloud Platform PubSub Service
+     * Messaging client for Google Cloud Platform PubSub Service Built on top of
+     * the Google Cloud Pub/Sub libraries.
      * 
      * Category: messaging
      * Since: 2.19

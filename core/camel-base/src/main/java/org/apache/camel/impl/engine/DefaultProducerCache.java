@@ -65,7 +65,12 @@ public class DefaultProducerCache extends ServiceSupport implements ProducerCach
         this.source = source;
         this.camelContext = (ExtendedCamelContext) camelContext;
         this.maxCacheSize = cacheSize <= 0 ? CamelContextHelper.getMaximumCachePoolSize(camelContext) : cacheSize;
-        this.producers = createServicePool(camelContext, maxCacheSize);
+        if (cacheSize >= 0) {
+            this.producers = createServicePool(camelContext, maxCacheSize);
+        } else {
+            // no cache then empty
+            this.producers = null;
+        }
 
         // only if JMX is enabled
         if (camelContext.getManagementStrategy() != null && camelContext.getManagementStrategy().getManagementAgent() != null) {
@@ -310,7 +315,7 @@ public class DefaultProducerCache extends ServiceSupport implements ProducerCach
                     }
 
                     // release back to the pool
-                    producers.release(endpoint, producer);
+                    releaseProducer(endpoint, producer);
                 } finally {
                     callback.done(doneSync);
                 }
@@ -370,7 +375,7 @@ public class DefaultProducerCache extends ServiceSupport implements ProducerCach
 
     @Override
     public int size() {
-        int size = producers.size();
+        int size = producers != null ? producers.size() : 0;
 
         LOG.trace("size = {}", size);
         return size;
@@ -384,8 +389,10 @@ public class DefaultProducerCache extends ServiceSupport implements ProducerCach
     @Override
     public synchronized void purge() {
         try {
-            producers.stop();
-            producers.start();
+            if (producers != null) {
+                producers.stop();
+                producers.start();
+            }
         } catch (Exception e) {
             LOG.debug("Error restarting producers", e);
         }
@@ -396,7 +403,9 @@ public class DefaultProducerCache extends ServiceSupport implements ProducerCach
 
     @Override
     public void cleanUp() {
-        producers.cleanUp();
+        if (producers != null) {
+            producers.cleanUp();
+        }
     }
 
     @Override

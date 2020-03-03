@@ -50,11 +50,8 @@ public class ComponentsBuilderFactoryTest extends ContextTestSupport {
                 .brokers("{{kafka.host}}:{{kafka.port}}")
                 .build(context);
 
-        final KafkaConfiguration kafkaConfiguration = kafkaComponent.getConfiguration();
-
-        assertNotNull(kafkaComponent);
-        assertEquals("localhost:9092", kafkaConfiguration.getBrokers());
-        assertEquals("localhost:9092", kafkaComponent.getBrokers());
+        assertNotNull(kafkaComponent.getConfiguration());
+        assertEquals("localhost:9092", kafkaComponent.getConfiguration().getBrokers());
     }
 
     @Test
@@ -62,17 +59,17 @@ public class ComponentsBuilderFactoryTest extends ContextTestSupport {
         final KafkaConfiguration kafkaConfiguration = new KafkaConfiguration();
         kafkaConfiguration.setGroupId("testGroup");
         kafkaConfiguration.setConsumerRequestTimeoutMs(5000);
+        kafkaConfiguration.setBrokers("localhost:9092");
 
         final KafkaComponent kafkaComponent = ComponentsBuilderFactory.kafka()
-                .allowManualCommit(true)
                 .configuration(kafkaConfiguration)
-                .brokers("localhost:9092")
+                .allowManualCommit(true)
                 .build();
 
         assertNotNull(kafkaComponent);
 
-        assertEquals("localhost:9092", kafkaComponent.getBrokers());
-        assertTrue(kafkaComponent.isAllowManualCommit());
+        assertEquals("localhost:9092", kafkaComponent.getConfiguration().getBrokers());
+        assertTrue(kafkaComponent.getConfiguration().isAllowManualCommit());
 
         assertEquals("testGroup", kafkaComponent.getConfiguration().getGroupId());
         assertEquals(5000, kafkaComponent.getConfiguration().getConsumerRequestTimeoutMs().intValue());

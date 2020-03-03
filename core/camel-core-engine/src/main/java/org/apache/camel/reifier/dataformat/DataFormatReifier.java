@@ -74,6 +74,7 @@ import org.apache.camel.spi.DataFormat;
 import org.apache.camel.spi.DataFormatContentTypeHeader;
 import org.apache.camel.spi.PropertyConfigurer;
 import org.apache.camel.spi.PropertyConfigurerAware;
+import org.apache.camel.spi.ReifierStrategy;
 import org.apache.camel.support.PropertyBindingSupport;
 import org.apache.camel.util.ObjectHelper;
 import org.slf4j.Logger;
@@ -131,6 +132,7 @@ public abstract class DataFormatReifier<T extends DataFormatDefinition> extends 
         map.put(ZipDeflaterDataFormat.class, ZipDataFormatReifier::new);
         map.put(ZipFileDataFormat.class, ZipFileDataFormatReifier::new);
         DATAFORMATS = map;
+        ReifierStrategy.addReifierClearer(DataFormatReifier::clearReifiers);
     }
 
     protected final T definition;
@@ -143,6 +145,10 @@ public abstract class DataFormatReifier<T extends DataFormatDefinition> extends 
     public static void registerReifier(Class<? extends DataFormatDefinition> dataFormatClass,
                                        BiFunction<CamelContext, DataFormatDefinition, DataFormatReifier<? extends DataFormatDefinition>> creator) {
         DATAFORMATS.put(dataFormatClass, creator);
+    }
+
+    public static void clearReifiers() {
+        DATAFORMATS.clear();
     }
 
     /**

@@ -30,6 +30,7 @@ import org.apache.camel.NamedNode;
 import org.apache.camel.NoSuchBeanException;
 import org.apache.camel.NoSuchEndpointException;
 import org.apache.camel.NoTypeConversionAvailableException;
+import org.apache.camel.spi.NormalizedEndpointUri;
 import org.apache.camel.spi.RouteStartupOrder;
 import org.apache.camel.util.ObjectHelper;
 
@@ -57,6 +58,51 @@ public final class CamelContextHelper {
         Endpoint endpoint = camelContext.getEndpoint(uri);
         if (endpoint == null) {
             throw new NoSuchEndpointException(uri);
+        } else {
+            return endpoint;
+        }
+    }
+
+    /**
+     * Returns the mandatory endpoint for the given URI or the
+     * {@link org.apache.camel.NoSuchEndpointException} is thrown
+     */
+    public static Endpoint getMandatoryEndpoint(CamelContext camelContext, NormalizedEndpointUri uri)
+        throws NoSuchEndpointException {
+        ExtendedCamelContext ecc = (ExtendedCamelContext) camelContext;
+        Endpoint endpoint = ecc.getEndpoint(uri);
+        if (endpoint == null) {
+            throw new NoSuchEndpointException(uri.getUri());
+        } else {
+            return endpoint;
+        }
+    }
+
+    /**
+     * Returns the mandatory endpoint (prototype scope) for the given URI or the
+     * {@link org.apache.camel.NoSuchEndpointException} is thrown
+     */
+    public static Endpoint getMandatoryPrototypeEndpoint(CamelContext camelContext, String uri)
+        throws NoSuchEndpointException {
+        ExtendedCamelContext ecc = (ExtendedCamelContext) camelContext;
+        Endpoint endpoint = ecc.getPrototypeEndpoint(uri);
+        if (endpoint == null) {
+            throw new NoSuchEndpointException(uri);
+        } else {
+            return endpoint;
+        }
+    }
+
+    /**
+     * Returns the mandatory endpoint (prototype scope) for the given URI or the
+     * {@link org.apache.camel.NoSuchEndpointException} is thrown
+     */
+    public static Endpoint getMandatoryPrototypeEndpoint(CamelContext camelContext, NormalizedEndpointUri uri)
+        throws NoSuchEndpointException {
+        ExtendedCamelContext ecc = (ExtendedCamelContext) camelContext;
+        Endpoint endpoint = ecc.getPrototypeEndpoint(uri);
+        if (endpoint == null) {
+            throw new NoSuchEndpointException(uri.getUri());
         } else {
             return endpoint;
         }

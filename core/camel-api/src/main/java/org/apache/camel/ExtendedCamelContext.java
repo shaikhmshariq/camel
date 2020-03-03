@@ -46,6 +46,7 @@ import org.apache.camel.spi.ManagementMBeanAssembler;
 import org.apache.camel.spi.ModelJAXBContextFactory;
 import org.apache.camel.spi.ModelToXMLDumper;
 import org.apache.camel.spi.NodeIdFactory;
+import org.apache.camel.spi.NormalizedEndpointUri;
 import org.apache.camel.spi.PackageScanClassResolver;
 import org.apache.camel.spi.PackageScanResourceResolver;
 import org.apache.camel.spi.ProcessorFactory;
@@ -114,6 +115,66 @@ public interface ExtendedCamelContext extends CamelContext {
      * @param strategy callback to be invoked
      */
     void registerEndpointCallback(EndpointStrategy strategy);
+
+    /**
+     * Resolves the given name to an {@link Endpoint} of the specified type (scope is prototype).
+     * If the name has a singleton endpoint registered, then the singleton is returned.
+     * Otherwise, a new {@link Endpoint} is created.
+     *
+     * The endpoint is NOT registered in the {@link org.apache.camel.spi.EndpointRegistry} as its prototype scoped,
+     * and therefore expected to be short lived and discarded after use (you must stop and shutdown the
+     * endpoint when no longer in use).
+     *
+     * @param uri the URI of the endpoint
+     * @return the endpoint
+     *
+     * @see #getEndpoint(String)
+     */
+    Endpoint getPrototypeEndpoint(String uri);
+
+    /**
+     * Resolves the given name to an {@link Endpoint} of the specified type (scope is prototype).
+     * If the name has a singleton endpoint registered, then the singleton is returned.
+     * Otherwise, a new {@link Endpoint} is created.
+     *
+     * The endpoint is NOT registered in the {@link org.apache.camel.spi.EndpointRegistry} as its prototype scoped,
+     * and therefore expected to be short lived and discarded after use (you must stop and shutdown the
+     * endpoint when no longer in use).
+     *
+     * @param uri the URI of the endpoint
+     * @return the endpoint
+     *
+     * @see #getEndpoint(String)
+     */
+    Endpoint getPrototypeEndpoint(NormalizedEndpointUri uri);
+
+    /**
+     * Is the given endpoint already registered in the {@link org.apache.camel.spi.EndpointRegistry}
+     *
+     * @param uri the URI of the endpoint
+     * @return the registered endpoint or <tt>null</tt> if not registered
+     */
+    Endpoint hasEndpoint(NormalizedEndpointUri uri);
+
+    /**
+     * Resolves the given name to an {@link Endpoint} of the specified type.
+     * If the name has a singleton endpoint registered, then the singleton is returned.
+     * Otherwise, a new {@link Endpoint} is created and registered in the {@link org.apache.camel.spi.EndpointRegistry}.
+     *
+     * @param uri the URI of the endpoint
+     * @return the endpoint
+     *
+     * @see #getPrototypeEndpoint(String)
+     */
+    Endpoint getEndpoint(NormalizedEndpointUri uri);
+
+    /**
+     * Normalizes the given uri.
+     *
+     * @param uri  the uri
+     * @return a normalized uri
+     */
+    NormalizedEndpointUri normalizeUri(String uri);
 
     /**
      * Returns the order in which the route inputs was started.
@@ -478,15 +539,5 @@ public interface ExtendedCamelContext extends CamelContext {
      * As this affects the entire JVM where Camel JARs are on the classpath.
      */
     boolean isAllowAddingNewRoutes();
-
-    /**
-     * Sets the {@link ReifierStrategy} to use.
-     */
-    void setReifierStrategy(ReifierStrategy refierStrategy);
-
-    /**
-     * Gets the {@link ReifierStrategy} to use.
-     */
-    ReifierStrategy getReifierStrategy();
 
 }
