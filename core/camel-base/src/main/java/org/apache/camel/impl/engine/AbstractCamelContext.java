@@ -45,6 +45,7 @@ import java.util.function.Supplier;
 
 import org.apache.camel.CamelContext;
 import org.apache.camel.CamelContextAware;
+import org.apache.camel.CatalogCamelContext;
 import org.apache.camel.Component;
 import org.apache.camel.Consumer;
 import org.apache.camel.ConsumerTemplate;
@@ -58,7 +59,6 @@ import org.apache.camel.FluentProducerTemplate;
 import org.apache.camel.GlobalEndpointConfiguration;
 import org.apache.camel.IsSingleton;
 import org.apache.camel.MultipleConsumersSupport;
-import org.apache.camel.NoFactoryAvailableException;
 import org.apache.camel.NoSuchEndpointException;
 import org.apache.camel.Processor;
 import org.apache.camel.ProducerTemplate;
@@ -77,6 +77,7 @@ import org.apache.camel.SuspendableService;
 import org.apache.camel.TypeConverter;
 import org.apache.camel.VetoCamelContextStartException;
 import org.apache.camel.catalog.RuntimeCamelCatalog;
+import org.apache.camel.health.HealthCheckRegistry;
 import org.apache.camel.impl.transformer.TransformerKey;
 import org.apache.camel.impl.validator.ValidatorKey;
 import org.apache.camel.spi.AnnotationBasedProcessorFactory;
@@ -173,7 +174,8 @@ import static org.apache.camel.spi.UnitOfWork.MDC_CAMEL_CONTEXT_ID;
 /**
  * Represents the context used to configure routes and the policies to use.
  */
-public abstract class AbstractCamelContext extends ServiceSupport implements ExtendedCamelContext, Suspendable {
+public abstract class AbstractCamelContext extends ServiceSupport
+        implements ExtendedCamelContext, CatalogCamelContext, Suspendable {
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractCamelContext.class);
 
@@ -264,7 +266,6 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     private volatile ProcessorFactory processorFactory;
     private volatile MessageHistoryFactory messageHistoryFactory;
     private volatile FactoryFinderResolver factoryFinderResolver;
-    private volatile FactoryFinder defaultFactoryFinder;
     private volatile StreamCachingStrategy streamCachingStrategy;
     private volatile InflightRepository inflightRepository;
     private volatile AsyncProcessorAwaitManager asyncProcessorAwaitManager;
@@ -333,6 +334,8 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
         // add the defer service startup listener
         this.startupListeners.add(deferStartupListener);
+
+        setDefaultExtension(HealthCheckRegistry.class, this::createHealthCheckRegistry);
 
         if (init) {
             try {
@@ -2727,12 +2730,6 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
         forceLazyInitialization();
 
-        // if camel-bean is on classpath then we can load its bean proxy factory
-        BeanProxyFactory beanProxyFactory = new BeanProxyFactoryResolver().resolve(this);
-        if (beanProxyFactory != null) {
-            addService(beanProxyFactory);
-        }
-
         // re-create endpoint registry as the cache size limit may be set after the constructor of this instance was called.
         // and we needed to create endpoints up-front as it may be accessed before this context is started
         endpoints = doAddService(createEndpointRegistry(endpoints));
@@ -3528,7 +3525,11 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
         getAsyncProcessorAwaitManager();
         getShutdownStrategy();
         getPackageScanClassResolver();
-        getRestRegistryFactory();
+        try {
+            getRestRegistryFactory();
+        } catch (IllegalArgumentException e) {
+            // ignore in case camel-rest is not on the classpath
+        }
         getReactiveExecutor();
         getBeanIntrospection();
         getPropertiesComponent();
@@ -3557,8 +3558,12 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
         getUuidGenerator();
         getUnitOfWorkFactory();
         getRouteController();
-        getBeanProxyFactory();
-        getBeanProcessorFactory();
+        try {
+            getBeanProxyFactory();
+            getBeanProcessorFactory();
+        } catch (Exception e) {
+            // ignore in case camel-bean is not on the classpath
+        }
         getBeanPostProcessor();
     }
 
@@ -3628,14 +3633,7 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     @Override
     public FactoryFinder getDefaultFactoryFinder() {
-        if (defaultFactoryFinder == null) {
-            synchronized (lock) {
-                if (defaultFactoryFinder == null) {
-                    defaultFactoryFinder = getFactoryFinderResolver().resolveDefaultFactoryFinder(getClassResolver());
-                }
-            }
-        }
-        return defaultFactoryFinder;
+        return getFactoryFinder(FactoryFinder.DEFAULT_PATH);
     }
 
     @Override
@@ -3656,7 +3654,7 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     }
 
     @Override
-    public FactoryFinder getFactoryFinder(String path) throws NoFactoryAvailableException {
+    public FactoryFinder getFactoryFinder(String path) {
         return factories.computeIfAbsent(path, this::createFactoryFinder);
     }
 
@@ -4207,9 +4205,6 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     protected RestRegistry createRestRegistry() {
         RestRegistryFactory factory = getRestRegistryFactory();
-        if (factory == null) {
-            throw new IllegalStateException("No RestRegistryFactory implementation found.  You need to add camel-rest to the classpath.");
-        }
         return factory.createRegistry();
     }
 
@@ -4320,7 +4315,7 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     }
 
     public void setXMLRoutesDefinitionLoader(XMLRoutesDefinitionLoader xmlRoutesDefinitionLoader) {
-        this.xmlRoutesDefinitionLoader = xmlRoutesDefinitionLoader;
+        this.xmlRoutesDefinitionLoader = doAddService(xmlRoutesDefinitionLoader);
     }
 
     public ModelToXMLDumper getModelToXMLDumper() {
@@ -4335,7 +4330,7 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
     }
 
     public void setModelToXMLDumper(ModelToXMLDumper modelToXMLDumper) {
-        this.modelToXMLDumper = modelToXMLDumper;
+        this.modelToXMLDumper = doAddService(modelToXMLDumper);
     }
 
     @Override
@@ -4352,7 +4347,7 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
 
     @Override
     public void setRuntimeCamelCatalog(RuntimeCamelCatalog runtimeCamelCatalog) {
-        this.runtimeCamelCatalog = runtimeCamelCatalog;
+        this.runtimeCamelCatalog = doAddService(runtimeCamelCatalog);
     }
 
     @Override
@@ -4389,11 +4384,15 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
         if (beanProxyFactory == null) {
             synchronized (lock) {
                 if (beanProxyFactory == null) {
-                    beanProxyFactory = createBeanProxyFactory();
+                    setBeanProxyFactory(createBeanProxyFactory());
                 }
             }
         }
         return beanProxyFactory;
+    }
+
+    public void setBeanProxyFactory(BeanProxyFactory beanProxyFactory) {
+        this.beanProxyFactory = doAddService(beanProxyFactory);
     }
 
     @Override
@@ -4401,11 +4400,15 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
         if (beanProcessorFactory == null) {
             synchronized (lock) {
                 if (beanProcessorFactory == null) {
-                    beanProcessorFactory = createBeanProcessorFactory();
+                    setBeanProcessorFactory(createBeanProcessorFactory());
                 }
             }
         }
         return beanProcessorFactory;
+    }
+
+    public void setBeanProcessorFactory(BeanProcessorFactory beanProcessorFactory) {
+        this.beanProcessorFactory = doAddService(beanProcessorFactory);
     }
 
     protected Map<String, BaseRouteService> getRouteServices() {
@@ -4451,6 +4454,8 @@ public abstract class AbstractCamelContext extends ServiceSupport implements Ext
             }
         }
     }
+
+    protected abstract HealthCheckRegistry createHealthCheckRegistry();
 
     protected abstract ReactiveExecutor createReactiveExecutor();
 
