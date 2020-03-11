@@ -27,6 +27,7 @@ import org.apache.camel.AlreadyStoppedException;
 import org.apache.camel.CamelContext;
 import org.apache.camel.CamelExchangeException;
 import org.apache.camel.ExchangeTimedOutException;
+import org.apache.camel.Route;
 import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.ValidationException;
 import org.apache.camel.impl.DefaultCamelContext;
@@ -36,7 +37,6 @@ import org.apache.camel.processor.errorhandler.DefaultExceptionPolicyStrategy;
 import org.apache.camel.processor.errorhandler.ExceptionPolicy;
 import org.apache.camel.processor.errorhandler.ExceptionPolicyKey;
 import org.apache.camel.reifier.errorhandler.DefaultErrorHandlerReifier;
-import org.apache.camel.Route;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -53,7 +53,7 @@ public class DefaultExceptionPolicyStrategyTest extends Assert {
 
     private ExceptionPolicy exceptionPolicy(Class<? extends Throwable> exceptionClass) {
         CamelContext cc = new DefaultCamelContext();
-        Route context = new DefaultRoute(cc, null, null, null);
+        Route context = new DefaultRoute(cc, null, null, null, null);
         return new DefaultErrorHandlerReifier<>(context, null)
                 .createExceptionPolicy(new OnExceptionDefinition(exceptionClass));
     }

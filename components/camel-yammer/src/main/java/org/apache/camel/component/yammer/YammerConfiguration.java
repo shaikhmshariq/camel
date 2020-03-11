@@ -133,7 +133,7 @@ public class YammerConfiguration implements Cloneable {
     }
 
     /**
-     * Return only the specified number of messages. Works for threaded=true and threaded=extended.
+     * Return only the specified number of messages. Works for threaded set to true and threaded set to extended.
      */
     public void setLimit(int limit) {
         this.limit = limit;
@@ -146,7 +146,7 @@ public class YammerConfiguration implements Cloneable {
     /**
      * Returns messages older than the message ID specified as a numeric string.
      * This is useful for paginating messages. For example, if you're currently viewing 20 messages and the oldest is number 2912,
-     * you could append olderThan=2912 to your request to get the 20 messages prior to those you're seeing.
+     * you could append olderThan equals to 2912 to your request to get the 20 messages prior to those you're seeing.
      */
     public void setOlderThan(long olderThan) {
         this.olderThan = olderThan;
@@ -158,7 +158,7 @@ public class YammerConfiguration implements Cloneable {
 
     /**
      * Returns messages newer than the message ID specified as a numeric string. This should be used when polling for new messages.
-     * If you're looking at messages, and the most recent message returned is 3516, you can make a request with the parameter newerThan=3516
+     * If you're looking at messages, and the most recent message returned is 3516, you can make a request with the parameter newerThan equals to 3516
      * to ensure that you do not get duplicate copies of messages already on your page.
      */
     public void setNewerThan(long newerThan) {
@@ -170,9 +170,9 @@ public class YammerConfiguration implements Cloneable {
     }
 
     /**
-     * threaded=true will only return the first message in each thread.
+     * threaded equals to true will only return the first message in each thread.
      * This parameter is intended for apps which display message threads collapsed.
-     * threaded=extended will return the thread starter messages in order of most recently active as well as the
+     * threaded equals to extended will return the thread starter messages in order of most recently active as well as the
      * two most recent messages, as they are viewed in the default view on the Yammer web interface.
      */
     public void setThreaded(String threaded) {
